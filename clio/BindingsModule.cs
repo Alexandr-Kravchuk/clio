@@ -23,7 +23,9 @@ using Clio.Common.Database;
 using Clio.Common.ScenarioHandlers;
 using Clio.ComposableApplication;
 using Clio.Package;
+using Clio.Package.NuGet;
 using Clio.Project;
+using Clio.Project.NuGet;
 using Clio.Query;
 using Clio.Requests;
 using Clio.Requests.Validators;
@@ -162,6 +164,7 @@ public class BindingsModule {
 		services.AddTransient<SetPackageVersionCommand>();
 		services.AddTransient<GetPackageVersionCommand>();
 		services.AddTransient<CheckNugetUpdateCommand>();
+		services.AddHttpClient<INugetPackagesProvider, NugetPackagesProvider>();
 		services.AddTransient<UpdateCliCommand>();
 		services.AddTransient<IUserPromptService, UserPromptService>();
 		services.AddTransient<DeletePackageCommand>();

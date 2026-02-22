@@ -89,3 +89,52 @@ Decision: Replaced direct Console usage with injected ILogger in the command and
 Discovery: Only one unit test instantiated this command directly (TurnFsmCommand login-retry test) and required constructor update.
 Files: clio/Command/LoadPackagesToFileSystemCommand.cs, clio.tests/Command/TurnFsmCommand.LoginRetry.Tests.cs
 Impact: CLIO002 is removed from this command while keeping behavior and tests intact.
+
+## 2026-02-22 - Refactor NugetPackagesProvider logging, DI HttpClient, and JSON parser
+Context: User requested fixing CLIO002 warnings in NugetPackagesProvider and migrating its HTTP/JSON flow to DI + System.Text.Json.
+Decision: Replaced direct Console output with ILogger, added constructor injection for HttpClient/ILogger, switched versions parsing from Newtonsoft JObject/JToken to System.Text.Json model binding, and registered typed client via AddHttpClient<INugetPackagesProvider, NugetPackagesProvider>.
+Discovery: Registering plain HttpClient globally introduced broad CLIO001 fallout, so typed HttpClient registration was used to scope DI creation to INugetPackagesProvider.
+Files: clio/Package/NuGet/NugetPackagesProvider.cs, clio/BindingsModule.cs, clio/clio.csproj, .codex/workspace-diary.md
+Impact: The targeted CLIO002 warnings are resolved, NugetPackagesProvider now follows DI for HttpClient, and Newtonsoft dependency is removed from this provider path.
+
+## 2026-02-22 - Add NugetPackagesProvider tests with DelegatingHandler and DI wiring
+Context: User requested coverage for NugetPackagesProvider with mocked DI and DelegatingHandler-based HTTP responses.
+Decision: Added a dedicated NUnit fixture that registers INugetPackagesProvider via AddHttpClient and injects a custom DelegatingHandler from DI to control responses; covered success, no-versions warning, and HTTP-error logging paths.
+Discovery: Existing PackageVersion ordering treats "-rc" as greater than empty suffix, so Last resolves to rc in current implementation and tests were aligned to current behavior.
+Files: clio.tests/Package/NuGet/NugetPackagesProvider.Tests.cs, clio/Package/NuGet/NugetPackagesProvider.cs, .codex/workspace-diary.md
+Impact: NugetPackagesProvider behavior is now regression-protected and demonstrates project-preferred DI+HttpClient testing approach.
+
+## 2026-02-22 - Add test style directives to AGENTS
+Context: User requested stricter test authoring rules for consistency and readability.
+Decision: Added a dedicated Test style policy section requiring explicit AAA structure, `because` in every assertion, and `[Description]` on every test method.
+Discovery: Existing AGENTS guidance covered DI/analyzers/docs but did not define shared test-writing conventions.
+Files: AGENTS.md, .codex/workspace-diary.md
+Impact: Future tests should follow uniform structure and clearer intent documentation.
+
+## 2026-02-22 - Align NugetPackagesProvider tests with AGENTS test policy
+Context: User requested applying new test style directives to NugetPackagesProvider tests.
+Decision: Updated tests to explicit AAA sections, added Description attribute to each test, and ensured all assertions include because; replaced NSubstitute Received/DidNotReceive checks with counted call assertions supporting because.
+Discovery: Log verification via ReceivedCalls allows assertion-style checks that comply with mandatory because rule.
+Files: clio.tests/Package/NuGet/NugetPackagesProvider.Tests.cs, .codex/workspace-diary.md
+Impact: NugetPackagesProvider tests now comply with repository testing conventions and remain green.
+
+## 2026-02-22 - Refactor NugetPackagesProvider tests to BaseClioModuleTests DI flow
+Context: User requested resolving INugetPackagesProvider from shared test container and registering StubDelegatingHandler + provider in DI.
+Decision: Reworked NugetPackagesProviderTests to inherit BaseClioModuleTests, override AdditionalRegistrations to add singleton logger/handler and typed AddHttpClient registration, and resolve provider from Container in each test.
+Discovery: Per-test container recreation via BaseClioModuleTests keeps handler/logger state isolated while enabling DI-first test composition.
+Files: clio.tests/Package/NuGet/NugetPackagesProvider.Tests.cs, .codex/workspace-diary.md
+Impact: Tests now follow repository DI testing style and validate the actual resolution path used by BindingsModule-based setups.
+
+## 2026-02-22 - Remove Task covariance in NuGet provider
+Context: Address compiler warning about co-variant array conversion in NugetPackagesProvider.
+Decision: Replaced Task.WaitAll(Task<T>[]) usage with Task.WhenAll(tasks).GetAwaiter().GetResult() to keep strong typing.
+Discovery: Task.WaitAll requires Task[], which triggers array covariance from Task<T>[]; Task.WhenAll avoids that path.
+Files: clio/Package/NuGet/NugetPackagesProvider.cs
+Impact: Removes potential runtime array type mismatch risk and clears analyzer/compiler warning.
+
+## 2026-02-22 - Convert NuGet provider API to async/await
+Context: User requested replacing blocking .GetAwaiter().GetResult() in NugetPackagesProvider with async/await.
+Decision: Changed INugetPackagesProvider methods to Task-based signatures and updated provider implementation to wait Task.WhenAll(tasks).
+Discovery: Synchronous call sites in NuGet manager/restorer now bridge via .Result until broader async propagation is done.
+Files: clio/Package/NuGet/INugetPackagesProvider.cs, clio/Package/NuGet/NugetPackagesProvider.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio.tests/Package/NuGet/NugetPackagesProvider.Tests.cs
+Impact: Provider no longer blocks with GetAwaiter().GetResult() and keeps async flow where version aggregation happens.

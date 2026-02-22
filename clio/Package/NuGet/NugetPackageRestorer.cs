@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Clio.Common;
+using Clio.Package.NuGet;
 
 namespace Clio.Project.NuGet
 {
@@ -68,7 +69,7 @@ namespace Clio.Project.NuGet
 
 		private string GetLastVersionPackage(string name, string nugetSourceUrl) {
 			LastVersionNugetPackages lastVersionPackage =
-				_nugetPackagesProvider.GetLastVersionPackages(name, nugetSourceUrl);
+				_nugetPackagesProvider.GetLastVersionPackages(name, nugetSourceUrl).Result;
 			return lastVersionPackage?.Last.Version.ToString();
 		}
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Clio.Common;
 using Clio.Package;
+using Clio.Package.NuGet;
 
 namespace Clio.Project.NuGet
 {
@@ -205,7 +206,7 @@ namespace Clio.Project.NuGet
 				.Select(pkg => pkg.Descriptor.Name)
 				.Distinct();
 			IEnumerable<LastVersionNugetPackages> appPackagesNamesInNuget =
-				_nugetPackagesProvider.GetLastVersionPackages(appPackagesNames, nugetSourceUrl);
+				_nugetPackagesProvider.GetLastVersionPackages(appPackagesNames, nugetSourceUrl).Result;
 			return GetPackagesForUpdate(applicationPackages, appPackagesNamesInNuget);
 		}
 

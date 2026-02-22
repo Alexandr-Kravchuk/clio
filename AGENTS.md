@@ -53,6 +53,14 @@ When adding or changing C# code, document public API using inline XML documentat
 - If a class/member implements an interface contract, place the authoritative documentation on the interface member.
 - In implementations, avoid duplicating full docs; keep docs at the interface level and use implementation comments only when behavior differs and needs clarification.
 
+# Test style policy
+
+When adding or changing tests, keep structure and assertions consistent.
+
+- Use AAA structure explicitly: `Arrange`, `Act`, `Assert`.
+- Every assertion must include a `because` explanation.
+- Every test method must have a `[Description("...")]` attribute.
+
 # Instance creation and DI policy
 
 Prefer resolving instances from the DI container and avoid manual construction via `new` for behavior-bearing classes.

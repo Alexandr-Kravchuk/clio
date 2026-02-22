@@ -35,9 +35,8 @@ public sealed class ConsoleOutputAnalyzer : DiagnosticAnalyzer {
 
 	private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context) {
 		InvocationExpressionSyntax invocation = (InvocationExpressionSyntax)context.Node;
-		IMethodSymbol? methodSymbol = context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken)
-			.Symbol as IMethodSymbol;
-		if (methodSymbol is null) {
+		if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken)
+				   .Symbol is not IMethodSymbol methodSymbol) {
 			return;
 		}
 
