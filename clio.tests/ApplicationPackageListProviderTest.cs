@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using Autofac;
+using Microsoft.Extensions.DependencyInjection;
 using Clio.Common;
 using Clio.Package;
 using Clio.Tests.Command;
@@ -36,7 +36,7 @@ internal class ApplicationPackageListProviderTest : BaseClioModuleTests
 	[TestCase("[{\"Name\":\"X\", \"UId\":\"00000000-0000-0000-0000-000000000001\", \"Maintainer\":\"Y\", \"Version\":\"1.0.0\" },{\"Name\":\"X\", \"UId\":\"00000000-0000-0000-0000-000000000002\", \"Maintainer\":\"Y\", \"Version\":\"1.1.0\" },{\"Name\":\"X\", \"UId\":\"00000000-0000-0000-0000-000000000003\", \"Maintainer\":\"Y\", \"Version\":\"2.0.0\" }]", 3)]
 	public void CreatePackageInfo_ReturnCorrectPackagesIfResponseCorrect(string responseData, int packageCount){
 		//Arrange
-		IJsonConverter jsonConverter = Container.Resolve<IJsonConverter>();
+		IJsonConverter jsonConverter = Container.GetRequiredService<IJsonConverter>();
 		ApplicationPackageListProvider provider = new (jsonConverter);
 
 		//Act
@@ -50,7 +50,7 @@ internal class ApplicationPackageListProviderTest : BaseClioModuleTests
 	[TestCase("{}")]
 	public void CreatePackageInfo_ThrowExceptionIfResponseIsIncorrect(string responseData){
 		//Arrange
-		IJsonConverter jsonConverter = Container.Resolve<IJsonConverter>();
+		IJsonConverter jsonConverter = Container.GetRequiredService<IJsonConverter>();
 		ApplicationPackageListProvider provider = new (jsonConverter);
 		Action act = () => provider.ParsePackageInfoResponse(responseData);
 
@@ -58,3 +58,4 @@ internal class ApplicationPackageListProviderTest : BaseClioModuleTests
 		act.Should().Throw<Exception>();
 	}
 }
+

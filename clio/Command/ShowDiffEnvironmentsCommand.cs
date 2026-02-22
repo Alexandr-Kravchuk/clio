@@ -1,4 +1,4 @@
-﻿using ATF.Repository.Providers;
+using ATF.Repository.Providers;
 using ATF.Repository;
 using Clio.Common;
 using CommandLine;
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Autofac;
+using Microsoft.Extensions.DependencyInjection;
 using Clio.UserEnvironment;
 using DocumentFormat.OpenXml.Drawing;
 using k8s.Models;
@@ -117,7 +117,7 @@ namespace Clio.Command
 			Logger.WriteInfo($"Loading environments manifest from {environmentName}");
 			var sourceEnv = _settingsRepository.GetEnvironment(environmentName);
 			var container = new BindingsModule().Register(sourceEnv);
-			var command = container.Resolve<SaveSettingsToManifestCommand>();
+			var command = container.GetRequiredService<SaveSettingsToManifestCommand>();
 			command.Execute(new SaveSettingsToManifestOptions() {
 				EnvironmentName = environmentName,
 				ManifestFileName = manifestFilePath,
@@ -128,3 +128,5 @@ namespace Clio.Command
 
 	}
 }
+
+

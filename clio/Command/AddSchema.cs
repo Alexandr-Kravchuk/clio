@@ -1,16 +1,10 @@
 ﻿using Clio.Common;
 using CommandLine;
-using System.Net.Security;
-using Clio.Common.K8;
-using Clio.Common.Kubernetes;
-using k8s;
 
 namespace Clio.Command;
 
 [Verb("add-schema", Aliases = [], HelpText = "Add schema to package")]
-public class AddSchemaOptions
-{
-
+public class AddSchemaOptions{
 	#region Properties: Public
 
 	[Option('p', "package", Required = true, HelpText = "Package path or name")]
@@ -23,22 +17,20 @@ public class AddSchemaOptions
 	public string SchemaType { get; set; }
 
 	#endregion
-
 }
 
-public class AddSchemaCommand : Command<AddSchemaOptions>
-{
-
+public class AddSchemaCommand : Command<AddSchemaOptions>{
 	#region Fields: Private
 
-	private readonly ISchemaBuilder _schemaBuilder;
 	private readonly ILogger _logger;
+
+	private readonly ISchemaBuilder _schemaBuilder;
 
 	#endregion
 
 	#region Constructors: Public
 
-	public AddSchemaCommand(ISchemaBuilder schemaBuilder, ILogger logger){
+	public AddSchemaCommand(ISchemaBuilder schemaBuilder, ILogger logger) {
 		_schemaBuilder = schemaBuilder;
 		_logger = logger;
 	}
@@ -54,6 +46,4 @@ public class AddSchemaCommand : Command<AddSchemaOptions>
 	}
 
 	#endregion
-	
-	
 }
