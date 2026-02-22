@@ -66,6 +66,7 @@ public class Link4RepoCommand : Command<Link4RepoOptions> {
 	private readonly IMediator _mediator;
 	private readonly ISettingsRepository _settingsRepository;
 	private readonly IFileSystem _fileSystem;
+	private readonly RfsEnvironment _rfsEnvironment;
 	private readonly IValidator<Link4RepoOptions> _validator;
 
 	#endregion
@@ -73,11 +74,12 @@ public class Link4RepoCommand : Command<Link4RepoOptions> {
 	#region Constructors: Public
 
 	public Link4RepoCommand(ILogger logger, IMediator mediator, ISettingsRepository settingsRepository,
-		IFileSystem fileSystem, IValidator<Link4RepoOptions> validator){
+		IFileSystem fileSystem, RfsEnvironment rfsEnvironment, IValidator<Link4RepoOptions> validator){
 		_logger = logger;
 		_mediator = mediator;
 		_settingsRepository = settingsRepository;
 		_fileSystem = fileSystem;
+		_rfsEnvironment = rfsEnvironment;
 		_validator = validator;
 	}
 
@@ -216,7 +218,7 @@ public class Link4RepoCommand : Command<Link4RepoOptions> {
 	///  </list>
 	/// </returns>
 	private int HandleLinkWithDirPath(string sitePath, string repoPath, string packages){
-		RfsEnvironment.Link4Repo(sitePath, repoPath, packages);
+		_rfsEnvironment.Link4Repo(sitePath, repoPath, packages);
 		_logger.WriteInfo($"Linking repository package(s) to environment {sitePath} from {repoPath}");
 		return 0;
 	}

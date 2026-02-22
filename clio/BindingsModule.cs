@@ -1,3 +1,5 @@
+#pragma warning disable CLIO001 // This is DI class, warning not applicable
+
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -25,7 +27,6 @@ using Clio.Project;
 using Clio.Query;
 using Clio.Requests;
 using Clio.Requests.Validators;
-using Clio.UserEnvironment;
 using Clio.Utilities;
 using Clio.Workspace;
 using Clio.Workspaces;
@@ -33,7 +34,6 @@ using Clio.YAML;
 using Creatio.Client;
 using FluentValidation;
 using k8s;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -130,6 +130,7 @@ public class BindingsModule {
 			services.AddTransient<IFileSystem, FileSystem>();
 		}
 
+		services.AddTransient<Clio.Common.IFileSystem, Clio.Common.FileSystem>();
 		IDeserializer deserializer = new DeserializerBuilder()
 			.WithNamingConvention(UnderscoredNamingConvention.Instance)
 			.IgnoreUnmatchedProperties()
@@ -247,8 +248,10 @@ public class BindingsModule {
 		services.AddTransient<IEnvManageUiService, EnvManageUiService>();
 		services.AddTransient<IInstalledApplication, InstalledApplication>();
 		services.AddTransient<Link4RepoCommand>();
+		services.AddTransient<Link2RepoCommand>();
 		services.AddTransient<LinkPackageStoreCommand>();
 		services.AddTransient<LinkCoreSrcCommand>();
+		services.AddTransient<RfsEnvironment>();
 
 		services.AddMediatR(cfg => {
 			cfg.RegisterServicesFromAssembly(typeof(BindingsModule).Assembly);
@@ -358,3 +361,4 @@ public class BindingsModule {
 	#endregion
 
 }
+#pragma warning restore CLIO001 // Non-nullable field is uninitialized.

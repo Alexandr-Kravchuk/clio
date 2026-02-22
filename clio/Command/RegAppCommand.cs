@@ -64,7 +64,7 @@ public class RegAppCommand : Command<RegAppOptions> {
 				Dictionary<string, IISScannerHandler.App> sites = IISScannerHandler.GetSites(_powerShellFactory);
 
 				sites.ToList().ForEach(site => {
-					_settingsRepository.ConfigureEnvironment(site.Key, new EnvironmentSettings {
+					EnvironmentSettings settings = new() {
 						Login = "Supervisor",
 						Password = "Supervisor",
 						Uri = site.Value.Url.ToString().TrimEnd('/'),
@@ -73,7 +73,8 @@ public class RegAppCommand : Command<RegAppOptions> {
 						IsNetCore = false,
 						DeveloperModeEnabled = true,
 						EnvironmentPath = site.Value.PhysicalPath
-					});
+					};
+					_settingsRepository.ConfigureEnvironment(site.Key, settings);
 					_logger.WriteInfo($"Environment {site.Key} was added from {options.Host ?? "localhost"}");
 				});
 				return 0;

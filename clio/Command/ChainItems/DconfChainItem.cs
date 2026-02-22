@@ -7,7 +7,7 @@ using ErrorOr;
 
 namespace Clio.Command.ChainItems;
 
-public class DconfChainItem(DownloadConfigurationCommand dconf, ILogger logger, IWorkspacePathBuilder workspacePathBuilder, IFileSystem fileSystem) : IFollowupUpChainItem{
+public class DconfChainItem(DownloadConfigurationCommand dconf, IWorkspacePathBuilder workspacePathBuilder, IFileSystem fileSystem) : IFollowupUpChainItem{
 	public ErrorOr<int> Execute() {
 		return ErrorOr.Error.Failure("NoContext","Cannot execute without context");
 	}

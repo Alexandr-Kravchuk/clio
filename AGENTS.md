@@ -62,6 +62,14 @@ Prefer resolving instances from the DI container and avoid manual construction v
 - Any class that implements behavior must have an interface and be registered in DI through that interface.
 - Exception: simple DTO/value carriers may be created with `new`. Prefer `record`/`record class` for these data-only types.
 
+## CLIO001 handling
+
+Treat `CLIO001` warnings as high-signal and review them carefully before suppressing.
+
+- Favor DI resolution and constructor injection over manual construction.
+- Using `new`/`new()` for behavior classes should be a last resort, not normal practice.
+- If a `CLIO001` warning is intentionally suppressed, add a short justification comment near the suppression.
+
 
 # Workspace diary
 
