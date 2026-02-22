@@ -25,12 +25,12 @@ public class TurnFsmCommandLoginRetryTests {
 		ISettingsRepository settingsRepository = Substitute.For<ISettingsRepository>();
 		settingsRepository.GetEnvironment(Arg.Any<EnvironmentOptions>()).Returns(new EnvironmentSettings { IsNetCore = true });
 		settingsRepository.GetEnvironment(Arg.Any<string>()).Returns(new EnvironmentSettings { IsNetCore = true });
+		ILogger logger = Substitute.For<ILogger>();
 
-		SetFsmConfigCommand setFsmConfigCommand = Substitute.ForPartsOf<SetFsmConfigCommand>(validator, settingsRepository);
+		SetFsmConfigCommand setFsmConfigCommand = Substitute.ForPartsOf<SetFsmConfigCommand>(validator, settingsRepository, logger);
 		setFsmConfigCommand.Execute(Arg.Any<SetFsmConfigOptions>()).Returns(0);
 
 		IFileDesignModePackages fileDesignModePackages = Substitute.For<IFileDesignModePackages>();
-		ILogger logger = Substitute.For<ILogger>();
 		LoadPackagesToFileSystemCommand loadToFs = new(fileDesignModePackages, logger);
 
 		LoadPackagesToDbCommand loadToDb = new(fileDesignModePackages, logger);
