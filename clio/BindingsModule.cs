@@ -142,7 +142,8 @@ public class BindingsModule {
 		services.AddSingleton(deserializer);
 		services.AddSingleton(serializer);
 
-		services.AddTransient<DconfChainItem>();
+		services.AddTransient<IPackageUtilities, PackageUtilities>();
+		services.AddKeyedTransient<IFollowupUpChainItem, DconfChainItem>(nameof(DconfChainItem));
 		services.AddTransient<IFollowUpChain, FollowUpChain>();
 		services.AddTransient<FeatureCommand>();
 		services.AddTransient<SysSettingsCommand>();

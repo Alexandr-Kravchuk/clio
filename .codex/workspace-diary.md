@@ -70,3 +70,22 @@ Decision: Added a dedicated `CLIO001 handling` section in `AGENTS.md` emphasizin
 Discovery: Existing DI policy was broad; explicit CLIO001 guidance reduces ambiguity during warning triage.
 Files: AGENTS.md, .codex/workspace-diary.md
 Impact: Future work should consistently treat CLIO001 warnings as actionable and avoid normalizing manual construction patterns.
+## 2026-02-22 - Add CLIO002 analyzer for Console output
+Context: User requested a new analyzer to discourage direct `Console` output and encourage `ConsoleLogger` usage.
+Decision: Added `CLIO002` analyzer that reports `System.Console.Write`/`WriteLine` invocations, excluding `Clio.*.ConsoleLogger` implementation.
+Discovery: Running build immediately surfaces many existing direct console writes across command and utility classes, which confirms analyzer coverage.
+Files: Clio.Analyzers/ConsoleOutputAnalyzer.cs, .codex/workspace-diary.md
+Impact: Repository now has automatic enforcement pressure toward `ILogger`/`ConsoleLogger` instead of direct console printing.
+## 2026-02-22 - Introduce CLIO severity policy in .editorconfig
+Context: User requested scalable analyzer governance without documenting every rule in AGENTS.
+Decision: Added `clio/.editorconfig` with CLIO severity tiers and explicit per-ID settings (`CLIO001` warning, `CLIO002` suggestion), and updated AGENTS to make `.editorconfig` the source of truth.
+Discovery: Numeric ID ranges cannot be expressed directly in .editorconfig, so each new CLIO rule must be added explicitly while preserving the tier convention.
+Files: clio/.editorconfig, AGENTS.md, .codex/workspace-diary.md
+Impact: Analyzer severity management is centralized and scalable as CLIO analyzer set grows.
+
+## 2026-02-22 - CLIO002 cleanup in LoadPackagesToFileSystemCommand
+Context: User requested addressing CLIO002 in LoadPackagesToFileSystemCommand.
+Decision: Replaced direct Console usage with injected ILogger in the command and updated the direct-construction test.
+Discovery: Only one unit test instantiated this command directly (TurnFsmCommand login-retry test) and required constructor update.
+Files: clio/Command/LoadPackagesToFileSystemCommand.cs, clio.tests/Command/TurnFsmCommand.LoginRetry.Tests.cs
+Impact: CLIO002 is removed from this command while keeping behavior and tests intact.

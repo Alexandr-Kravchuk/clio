@@ -30,9 +30,9 @@ public class TurnFsmCommandLoginRetryTests {
 		setFsmConfigCommand.Execute(Arg.Any<SetFsmConfigOptions>()).Returns(0);
 
 		IFileDesignModePackages fileDesignModePackages = Substitute.For<IFileDesignModePackages>();
-		LoadPackagesToFileSystemCommand loadToFs = new(fileDesignModePackages);
-
 		ILogger logger = Substitute.For<ILogger>();
+		LoadPackagesToFileSystemCommand loadToFs = new(fileDesignModePackages, logger);
+
 		LoadPackagesToDbCommand loadToDb = new(fileDesignModePackages, logger);
 
 		IApplicationClient applicationClient = Substitute.For<IApplicationClient>();

@@ -9,7 +9,7 @@ namespace Clio.Command.ChainItems;
 
 public class DconfChainItem(DownloadConfigurationCommand dconf, IWorkspacePathBuilder workspacePathBuilder, IFileSystem fileSystem) : IFollowupUpChainItem{
 	public ErrorOr<int> Execute() {
-		return ErrorOr.Error.Failure("NoContext","Cannot execute without context");
+		return Error.Failure("NoContext","Cannot execute without context");
 	}
 
 	public ErrorOr<int> Execute(IDictionary<string, object> context) {
@@ -38,11 +38,9 @@ public class DconfChainItem(DownloadConfigurationCommand dconf, IWorkspacePathBu
 			return 0;
 		}
 
-		if (isEnv) {
-			return Restore(environment as string, true);
-		}
-
-		return Restore(buildZipPath as string, false);
+		return isEnv 
+			? Restore(environment as string, true) 
+			: Restore(buildZipPath as string, false);
 	}
 
 	private ErrorOr<int> Restore(string value, bool isEnv) {
@@ -68,8 +66,4 @@ public class DconfChainItem(DownloadConfigurationCommand dconf, IWorkspacePathBu
 		}
 		return i;
 	}
-	
-	
-	
-	
 }

@@ -7,27 +7,29 @@ namespace Clio.Command;
 
 #region Class: LoadPackagesToFileSystemOptions
 
-[Verb("pkg-to-file-system", Aliases = new[] {"tofs", "2fs"},
+[Verb("pkg-to-file-system", Aliases = new[] { "tofs", "2fs" },
 	HelpText = "Load packages to file system on a web application")]
-public class LoadPackagesToFileSystemOptions : EnvironmentOptions { }
+public class LoadPackagesToFileSystemOptions : EnvironmentOptions{ }
 
 #endregion
 
 #region Class: LoadPackagesToFileSystemCommand
 
-public class LoadPackagesToFileSystemCommand : Command<EnvironmentOptions> {
-
+public class LoadPackagesToFileSystemCommand : Command<EnvironmentOptions>{
 	#region Fields: Private
 
 	private readonly IFileDesignModePackages _fileDesignModePackages;
+	private readonly ILogger _logger;
 
 	#endregion
 
 	#region Constructors: Public
 
-	public LoadPackagesToFileSystemCommand(IFileDesignModePackages fileDesignModePackages) {
+	public LoadPackagesToFileSystemCommand(IFileDesignModePackages fileDesignModePackages, ILogger logger) {
 		fileDesignModePackages.CheckArgumentNull(nameof(fileDesignModePackages));
+		logger.CheckArgumentNull(nameof(logger));
 		_fileDesignModePackages = fileDesignModePackages;
+		_logger = logger;
 	}
 
 	#endregion
@@ -37,17 +39,16 @@ public class LoadPackagesToFileSystemCommand : Command<EnvironmentOptions> {
 	public override int Execute(EnvironmentOptions options) {
 		try {
 			_fileDesignModePackages.LoadPackagesToFileSystem();
-			Console.WriteLine();
+			_logger.WriteLine();
 			return 0;
 		}
 		catch (Exception e) {
-			Console.WriteLine(e);
+			_logger.WriteError(e.ToString());
 			return 1;
 		}
 	}
 
 	#endregion
-
 }
 
 #endregion

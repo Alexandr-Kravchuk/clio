@@ -4,6 +4,7 @@ using Clio.Common;
 using Clio.Package;
 using CommandLine;
 using ErrorOr;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Clio.Command;
 
@@ -28,7 +29,7 @@ public class AddPackageOptions : EnvironmentOptions{
 
 #region Class: AddPackageCommand
 
-public class AddPackageCommand(IPackageCreator packageCreator, ILogger logger, IFollowUpChain chain, DconfChainItem dconfChainItem) : Command<AddPackageOptions>{
+public class AddPackageCommand(IPackageCreator packageCreator, ILogger logger, IFollowUpChain chain, [FromKeyedServices(nameof(DconfChainItem))] IFollowupUpChainItem dconfChainItem) : Command<AddPackageOptions>{
 
 	#region Methods: Public
 

@@ -62,13 +62,21 @@ Prefer resolving instances from the DI container and avoid manual construction v
 - Any class that implements behavior must have an interface and be registered in DI through that interface.
 - Exception: simple DTO/value carriers may be created with `new`. Prefer `record`/`record class` for these data-only types.
 
-## CLIO001 handling
+## CLIO analyzer handling
 
-Treat `CLIO001` warnings as high-signal and review them carefully before suppressing.
+Treat custom `CLIO*` diagnostics as actionable and rely on `clio/.editorconfig` as the source of truth for severity.
+
+- Use analyzer ID numbering convention to group importance:
+- `CLIO1xx`: architecture/runtime safety (high importance).
+- `CLIO2xx`: developer experience/style (medium importance).
+- `CLIO9xx`: experimental/incubation (low importance).
+- Because `.editorconfig` cannot define numeric ranges directly, add explicit per-ID severity entries for each new rule.
+- Favor fixing diagnostics over suppressing; if suppression is required, add a short justification comment near the suppression.
+
+### CLIO001 specifics
 
 - Favor DI resolution and constructor injection over manual construction.
 - Using `new`/`new()` for behavior classes should be a last resort, not normal practice.
-- If a `CLIO001` warning is intentionally suppressed, add a short justification comment near the suppression.
 
 
 # Workspace diary
