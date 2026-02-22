@@ -141,17 +141,17 @@ public class WindowsFeatureManager : IWindowsFeatureManager
 			DismApi.Initialize(DismLogLevel.LogErrorsWarningsInfo);
 			using var session = DismApi.OpenOnlineSession();
 			var (left, top) = Console.GetCursorPosition();
-			if (state) {
-				DismApi.EnableFeature(session, featureCode, false, true, null, progress => {
-					Console.SetCursorPosition(left, top);
-					Console.Write(_consoleProgressBar.GetBuatifyProgress("+ " + featureCode, progress.Current, progress.Total) + " ");
-				});
-			} else {
-				DismApi.DisableFeature(session, featureCode, null, true, progress => {
-					Console.SetCursorPosition(left, top);
-				Console.Write(_consoleProgressBar.GetBuatifyProgress("- " + featureCode, progress.Current, progress.Total) + " ");
-				});
-			}
+				if (state) {
+					DismApi.EnableFeature(session, featureCode, false, true, null, progress => {
+						Console.SetCursorPosition(left, top);
+						_logger.Write(_consoleProgressBar.GetBuatifyProgress("+ " + featureCode, progress.Current, progress.Total) + " ");
+					});
+				} else {
+					DismApi.DisableFeature(session, featureCode, null, true, progress => {
+						Console.SetCursorPosition(left, top);
+						_logger.Write(_consoleProgressBar.GetBuatifyProgress("- " + featureCode, progress.Current, progress.Total) + " ");
+					});
+				}
 			_logger.WriteLine();
 		}  finally {
 			DismApi.Shutdown();

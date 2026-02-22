@@ -1,64 +1,61 @@
-﻿namespace Clio.Command
-{
-	using System;
-	using Clio.Common;
-    using Clio.WebApplication;
-    using Clio.Workspaces;
-    using CommandLine;
+﻿using System;
+using Clio.Common;
+using Clio.WebApplication;
+using CommandLine;
 
-    #region Class: UploadLicenseCommandOptions
+namespace Clio.Command;
 
-    [Verb("upload-license", Aliases = new string[] { "license", "loadlicense", "load-license" }, HelpText = "Load license to selected environment")]
-	public class UploadLicenseCommandOptions : EnvironmentOptions
-	{
-		[Value(0, MetaName = "FilePath", Required = false, HelpText = "License file path")]
-		public string FilePath { get; set; }
-	}
+#region Class: UploadLicenseCommandOptions
 
-	#endregion
+[Verb("upload-license", Aliases = ["license", "loadlicense", "load-license"],
+	HelpText = "Load license to selected environment")]
+public class UploadLicenseCommandOptions : EnvironmentOptions{
+	#region Properties: Public
 
-	#region Class: UploadLicenseCommand
-
-	public class UploadLicenseCommand : Command<UploadLicenseCommandOptions>
-	{
-
-		#region Fields: Private
-
-		private readonly IApplication _application;
-
-		#endregion
-
-		#region Constructors: Public
-
-		public UploadLicenseCommand(IApplication application)
-		{
-			application.CheckArgumentNull(nameof(application));
-			_application = application;
-		}
-
-		#endregion
-
-		#region Methods: Public
-
-		public override int Execute(UploadLicenseCommandOptions options)
-		{
-			try
-			{
-				_application.LoadLicense(options.FilePath);
-				Console.WriteLine("Done");
-				return 0;
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e.Message);
-				return 1;
-			}
-		}
-
-		#endregion
-
-	}
+	[Value(0, MetaName = "FilePath", Required = false, HelpText = "License file path")]
+	public string FilePath { get; set; }
 
 	#endregion
-
 }
+
+#endregion
+
+#region Class: UploadLicenseCommand
+
+public class UploadLicenseCommand : Command<UploadLicenseCommandOptions>{
+	#region Fields: Private
+
+	private readonly IApplication _application;
+	private readonly ILogger _logger;
+
+	#endregion
+
+	#region Constructors: Public
+
+	public UploadLicenseCommand(IApplication application, ILogger logger) {
+		application.CheckArgumentNull(nameof(application));
+		logger.CheckArgumentNull(nameof(logger));
+		_application = application;
+		_logger = logger;
+	}
+
+	#endregion
+
+	#region Methods: Public
+
+	public override int Execute(UploadLicenseCommandOptions options) {
+		try {
+			_application.LoadLicense(options.FilePath);
+			_logger.WriteLine("Done");
+			return 0;
+		}
+		catch (Exception e) {
+			_logger.WriteLine(e.Message);
+			return 1;
+		}
+	}
+
+	#endregion
+}
+
+#endregion

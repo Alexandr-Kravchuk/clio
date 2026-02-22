@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
+using Clio.Common;
 using Clio.Command;
 using Clio.Requests;
 using Clio.UserEnvironment;
@@ -29,7 +30,8 @@ public class SetFsmConfigCommandTests : BaseCommandTests<SetFsmConfigOptions> {
 		base.Setup();
 		_validator = Substitute.For<IValidator<SetFsmConfigOptions>>();
 		_settingsRepository = Substitute.For<ISettingsRepository>();
-		_command = new SetFsmConfigCommand(_validator, _settingsRepository);
+		_logger = Substitute.For<ILogger>();
+		_command = new SetFsmConfigCommand(_validator, _settingsRepository, _logger);
 	}
 
 	#endregion
@@ -38,6 +40,7 @@ public class SetFsmConfigCommandTests : BaseCommandTests<SetFsmConfigOptions> {
 
 	private IValidator<SetFsmConfigOptions> _validator;
 	private ISettingsRepository _settingsRepository;
+	private ILogger _logger;
 	private SetFsmConfigCommand _command;
 
 	#endregion
@@ -514,3 +517,5 @@ public class SetFsmConfigCommandTests : BaseCommandTests<SetFsmConfigOptions> {
 	}
 
 }
+
+

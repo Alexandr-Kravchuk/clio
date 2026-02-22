@@ -72,6 +72,7 @@ public class SetFsmConfigCommand : Command<SetFsmConfigOptions>
 
 	private readonly IValidator<SetFsmConfigOptions> _validator;
 	private readonly ISettingsRepository _settingsRepository;
+	private readonly ILogger _logger;
 	private readonly List<string[]> _changedValuesTable = [
 		["Key", "Old Value", "New Value"],
 		["--------------------", "---------", "---------"]
@@ -82,9 +83,11 @@ public class SetFsmConfigCommand : Command<SetFsmConfigOptions>
 
 	#region Constructors: Public
 
-	public SetFsmConfigCommand(IValidator<SetFsmConfigOptions> validator, ISettingsRepository settingsRepository) {
+	public SetFsmConfigCommand(IValidator<SetFsmConfigOptions> validator, ISettingsRepository settingsRepository,
+		ILogger logger) {
 		_validator = validator;
 		_settingsRepository = settingsRepository;
+		_logger = logger;
 	}
 
 	#endregion
@@ -122,7 +125,7 @@ public class SetFsmConfigCommand : Command<SetFsmConfigOptions>
 			ModifyWebConfigFile(webConfigPath, options.IsFsm.ToLower(CultureInfo.InvariantCulture) == "on"); //Happy path
 			return 0;
 		}
-		Console.WriteLine($"Config does not exist in {webConfigPath}");
+		_logger.WriteLine($"Config does not exist in {webConfigPath}");
 		return 1;
 	}
 
@@ -176,7 +179,7 @@ public class SetFsmConfigCommand : Command<SetFsmConfigOptions>
 			}
 		}
 		doc.Save(webConfigPath);
-		Console.WriteLine(TextUtilities.ConvertTableToString(_changedValuesTable));
+		_logger.WriteLine(TextUtilities.ConvertTableToString(_changedValuesTable));
 		return 0;
 	}
 

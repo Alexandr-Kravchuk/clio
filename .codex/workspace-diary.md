@@ -152,3 +152,24 @@ Decision: Replaced all Console.WriteLine/Console.Write calls in RequestUserConfi
 Discovery: LinkCoreSrcCommand already has injected ILogger, so no DI registration changes were needed.
 Files: clio/Command/LinkCoreSrcCommand.cs
 Impact: CLIO002 warnings for Console output in LinkCoreSrcCommand are removed.
+
+## 2026-02-22 - Remove CLIO002 console output in WindowsFeatureManager and UploadLicenseCommand
+Context: User requested addressing specific CLIO002 warnings in two command classes.
+Decision: Replaced Console.Write* calls with injected ILogger writes; added ILogger dependency to UploadLicenseCommand constructor.
+Discovery: WindowsFeatureManager already had _logger, so only write-call replacements were needed there.
+Files: clio/Command/WindowsFeatureManager.cs, clio/Command/UploadLicenseCommand.cs
+Impact: Targeted CLIO002 warnings for these files are removed while keeping behavior intact.
+
+## 2026-02-22 - Remove Console output in SetFsmConfigCommand
+Context: User requested fixing CLIO002 warning in SetFsmConfigCommand.cs.
+Decision: Added ILogger dependency to SetFsmConfigCommand and replaced Console.WriteLine calls with _logger.WriteLine.
+Discovery: File had two console writes (missing config + table output), both now routed through logger.
+Files: clio/Command/SetFsmConfigCommand.cs
+Impact: CLIO002 warnings in SetFsmConfigCommand are cleared.
+
+## 2026-02-22 - Fix SetFsmConfigCommand tests after ILogger constructor change
+Context: Tests failed to compile after SetFsmConfigCommand started requiring ILogger.
+Decision: Updated SetFsmConfigCommand.Tests setup to create and pass a substitute ILogger into command constructor.
+Discovery: The test file initially referenced the old 2-arg constructor only.
+Files: clio.tests/Command/SetFsmConfigCommand.Tests.cs
+Impact: clio.tests compiles again with the updated command dependency graph.
