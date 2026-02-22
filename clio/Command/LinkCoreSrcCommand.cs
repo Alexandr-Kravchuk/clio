@@ -417,29 +417,29 @@ public class LinkCoreSrcCommand : Command<LinkCoreSrcOptions>
 
 	private bool RequestUserConfirmation(LinkCoreSrcOptions options, EnvironmentSettings env)
 	{
-		Console.WriteLine("\n═════════════════════════════════════════════════════════════════════════════════════");
-		Console.WriteLine("Linking Creatio Core Source Code");
-		Console.WriteLine("═════════════════════════════════════════════════════════════════════════════════════");
-		Console.WriteLine($"Environment:  {options.Environment}");
-		Console.WriteLine($"Mode:         {options.Mode}");
-		Console.WriteLine($"App Path:     {env.EnvironmentPath}");
-		Console.WriteLine($"Core Path:    {options.CorePath}");
-		Console.WriteLine("\nOperations to perform:");
-		Console.WriteLine("  1. Synchronize ConnectionStrings.config from app to core");
+		_logger.WriteLine("\n═════════════════════════════════════════════════════════════════════════════════════");
+		_logger.WriteLine("Linking Creatio Core Source Code");
+		_logger.WriteLine("═════════════════════════════════════════════════════════════════════════════════════");
+		_logger.WriteLine($"Environment:  {options.Environment}");
+		_logger.WriteLine($"Mode:         {options.Mode}");
+		_logger.WriteLine($"App Path:     {env.EnvironmentPath}");
+		_logger.WriteLine($"Core Path:    {options.CorePath}");
+		_logger.WriteLine("\nOperations to perform:");
+		_logger.WriteLine("  1. Synchronize ConnectionStrings.config from app to core");
 		if (options.Mode == CreatioMode.NetCore)
 		{
-			Console.WriteLine("  2. Configure ports in appsettings.json");
-			Console.WriteLine("  3. Enable LAX mode in Terrasoft.WebHost.dll.config");
-			Console.WriteLine("  4. Update environment configuration with core path and restart service");
+			_logger.WriteLine("  2. Configure ports in appsettings.json");
+			_logger.WriteLine("  3. Enable LAX mode in Terrasoft.WebHost.dll.config");
+			_logger.WriteLine("  4. Update environment configuration with core path and restart service");
 		}
 		else
 		{
-			Console.WriteLine("  2. Update environment configuration with core path");
-			Console.WriteLine("  3. Update IIS site and web app's physical path to core directory and restart service");
+			_logger.WriteLine("  2. Update environment configuration with core path");
+			_logger.WriteLine("  3. Update IIS site and web app's physical path to core directory and restart service");
 		}
-		Console.WriteLine("═════════════════════════════════════════════════════════════════════════════════════\n");
+		_logger.WriteLine("═════════════════════════════════════════════════════════════════════════════════════\n");
 
-		Console.Write("Continue? (Y/n): ");
+		_logger.Write("Continue? (Y/n): ");
 		string response = Console.ReadLine()?.ToLower() ?? "";
 		return string.IsNullOrEmpty(response) || response == "y";
 	}

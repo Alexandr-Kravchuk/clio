@@ -138,3 +138,17 @@ Decision: Changed INugetPackagesProvider methods to Task-based signatures and up
 Discovery: Synchronous call sites in NuGet manager/restorer now bridge via .Result until broader async propagation is done.
 Files: clio/Package/NuGet/INugetPackagesProvider.cs, clio/Package/NuGet/NugetPackagesProvider.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio.tests/Package/NuGet/NugetPackagesProvider.Tests.cs
 Impact: Provider no longer blocks with GetAwaiter().GetResult() and keeps async flow where version aggregation happens.
+
+## 2026-02-22 - Replace Console writes in RfsEnvironment
+Context: User requested resolving CLIO002 warnings in RfsEnvironment.cs.
+Decision: Injected ILogger into RfsEnvironment and replaced Console.WriteLine calls with _logger.WriteLine.
+Discovery: RfsEnvironment is already created via DI (BindingsModule), so constructor injection required no registration changes.
+Files: clio/Command/RfsEnvironment.cs
+Impact: Targeted CLIO002 warnings in RfsEnvironment are removed while preserving output behavior.
+
+## 2026-02-22 - Remove Console output in LinkCoreSrcCommand confirmation flow
+Context: User requested addressing CLIO002 warning(s) in LinkCoreSrcCommand.cs.
+Decision: Replaced all Console.WriteLine/Console.Write calls in RequestUserConfirmation with _logger.WriteLine/_logger.Write while keeping Console.ReadLine for user input.
+Discovery: LinkCoreSrcCommand already has injected ILogger, so no DI registration changes were needed.
+Files: clio/Command/LinkCoreSrcCommand.cs
+Impact: CLIO002 warnings for Console output in LinkCoreSrcCommand are removed.

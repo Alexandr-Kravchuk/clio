@@ -14,6 +14,7 @@ public class RfsEnvironment {
 
 	private readonly IFileSystem _fileSystem;
 	private readonly IPackageUtilities _packageUtilities;
+	private readonly ILogger _logger;
 
 	#endregion
 
@@ -24,9 +25,11 @@ public class RfsEnvironment {
 	/// </summary>
 	/// <param name="fileSystem">Filesystem abstraction used for link creation.</param>
 	/// <param name="packageUtilities">Package utility service used to resolve package content paths.</param>
-	public RfsEnvironment(IFileSystem fileSystem, IPackageUtilities packageUtilities) {
+	/// <param name="logger">Logger used for progress output.</param>
+	public RfsEnvironment(IFileSystem fileSystem, IPackageUtilities packageUtilities, ILogger logger) {
 		_fileSystem = fileSystem;
 		_packageUtilities = packageUtilities;
+		_logger = logger;
 	}
 
 	#endregion
@@ -59,12 +62,12 @@ public class RfsEnvironment {
 		for (int i = 0; i < environmentPackageFolders.Count; i++) {
 			DirectoryInfo environmentPackageFolder = environmentPackageFolders[i];
 			string environmentPackageName = environmentPackageFolder.Name;
-			Console.WriteLine(
-				$"Processing package '{environmentPackageName}' {i + 1} of {environmentPackageFolders.Count}.");
+				_logger.WriteLine(
+					$"Processing package '{environmentPackageName}' {i + 1} of {environmentPackageFolders.Count}.");
 			DirectoryInfo repositoryPackageFolder
 				= repositoryPackageFolders.FirstOrDefault(s => s.Name == environmentPackageName);
 			if (repositoryPackageFolder != null) {
-				Console.WriteLine($"Package '{environmentPackageName}' found in repository.");
+					_logger.WriteLine($"Package '{environmentPackageName}' found in repository.");
 				environmentPackageFolder.Delete(true);
 				string repositoryPackageFolderPath = repositoryPackageFolder.FullName;
 				string packageContentFolderPath
@@ -72,7 +75,7 @@ public class RfsEnvironment {
 				_fileSystem.CreateDirectorySymLink(packageContentFolderPath, repositoryPackageFolderPath);
 			}
 			else {
-				Console.WriteLine($"Package '{environmentPackageName}' not found in repository.");
+					_logger.WriteLine($"Package '{environmentPackageName}' not found in repository.");
 			}
 		}
 	}
