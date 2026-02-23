@@ -173,3 +173,10 @@ Decision: Updated SetFsmConfigCommand.Tests setup to create and pass a substitut
 Discovery: The test file initially referenced the old 2-arg constructor only.
 Files: clio.tests/Command/SetFsmConfigCommand.Tests.cs
 Impact: clio.tests compiles again with the updated command dependency graph.
+
+## 2026-02-22 - Fix TurnFsmCommandLoginRetryTests after SetFsmConfigCommand ctor change
+Context: Targeted test Execute_RetriesLogin_AfterRestart failed after SetFsmConfigCommand gained ILogger constructor dependency.
+Decision: Updated partial substitute construction in login-retry test to pass ILogger.
+Discovery: Failure was Castle proxy constructor mismatch in Substitute.ForPartsOf<SetFsmConfigCommand>.
+Files: clio.tests/Command/TurnFsmCommand.LoginRetry.Tests.cs
+Impact: TurnFsmCommandLoginRetryTests.Execute_RetriesLogin_AfterRestart passes again.
