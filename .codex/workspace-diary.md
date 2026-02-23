@@ -352,3 +352,44 @@ Decision: Performed static hotspot analysis across command/runtime paths and pri
 Discovery: High-impact risks are concentrated in SafeDeleteDirectory busy-wait loop, deploy/install retry loops using Thread.Sleep, sync-over-async call chains in updater/NuGet/K8/IIS paths, and unbounded Parallel.ForEach in downloader; no benchmark harness references were found.
 Files: clio/Common/FileSystem.cs, clio/Command/DeployInfrastructureCommand.cs, clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/AppUpdater.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio/WebApplication/Downloader.cs, clio/ComposableApplication/ComposableApplicationManager.cs, clio/Common/K8/k8Commands.cs, clio/Common/IIS/WindowsIISAppPoolManager.cs, .codex/workspace-diary.md
 Impact: Future optimization work can start from ranked hotspots with concrete remediation paths and benchmark-gap visibility.
+
+## 2026-02-23 - Reviewer B performance regression audit for f3d29c87..HEAD
+Context: User requested a performance-focused review of refactor changes between f3d29c87 and HEAD.
+Decision: Prgsioritized findin where refactoring introduced measurable algorithmic/resource risks (output buffering growth, sync-over-async blocking, avoidable allocations).
+Discovery: ProcessExecutor now unconditionally accumulates all stdout/stderr lines, which increases memory pressure for verbose long-running commands (pg_restore call paths in RestoreDb and CreatioInstallerService). NuGet refactor introduced .Result blocking in manager/restorer call chains and extra immutable materialization in version parsing.
+Files: clio/Common/ProcessExecutor.cs, clio/Command/RestoreDb.cs, clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio/Package/NuGet/NugetPackagesProvider.cs, .codex/workspace-diary.md
+Impact: Provides targeted remediation points to reduce memory growth during restore operations and remove blocking/allocation overhead in NuGet version resolution.
+## 2026-02-23 - Security review of refactor range f3d29c87..HEAD
+Context: User requested reviewer-C style security-focused review of refactoring changes between f3d29c87 and HEAD.
+Decision: Performed diff-driven analysis centered on process execution, shell invocation, DB restore command construction, and secret handling paths.
+Discovery: No critical/high-confidence RCE was introduced; identified medium risk from string-based argument composition in centralized ProcessExecutor usage and low risk from fire-and-forget launch failures being swallowed.
+Files: clio/Common/ProcessExecutor.cs, clio/Command/RestoreDb.cs, clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/Command/RegisterCommand.cs, clio/Command/UnregisterCommand.cs, .codex/workspace-diary.md
+Impact: Captures concrete security hardening priorities for process execution API and command argument handling in future refactors.
+
+## 2026-02-23 - Refactor review from f3d29c87
+Context: User requested a multi-angle review of all committed changes from f3d29c87..HEAD, focused on correctness, maintainability, performance regressions, and security implications.
+Decision: Performed parallel agent review (correctness/maintainability, performance, security) and validated findings with local source inspection and test execution.
+Discovery: High-confidence regressions are concentrated around process execution semantics (fire-and-forget/start failure handling), kubectl preflight reliability, and stderr routing impact on existing tests; performance risk observed from unconditional process output buffering and sync-over-async NuGet calls; security risk observed in string-concatenated process arguments for pg_restore.
+Files: clio/Common/ProcessExecutor.cs, clio/Command/DeployInfrastructureCommand.cs, clio/Command/OpenAppCommand.cs, clio/Common/ConsoleLogger.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio/Command/RestoreDb.cs, clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio.tests/Common/ConsoleLoggerTests.cs, clio.tests/Command/LastCompilationLogCommandTestFixture.cs, .codex/workspace-diary.md
+Impact: Provides a prioritized defect/risk list for follow-up fixes after the large refactor and records validated hotspots to accelerate remediation.
+
+Findings
+
+1. High: process-start failures are silently swallowed in the new executor compatibility API, breaking preflight correctness.
+   ProcessExecutor.cs:225 (/C:/Projects/clio/clio/Common/ProcessExecutor.cs:225) ignores FireAndForgetAsync result and returns success-like output; ProcessExecutor.cs:286 (/C:/Projects/clio/clio/Common/ProcessExecutor.cs:286) returns Started=false instead of throwing on start failure.
+   DeployInfrastructureCommand still relies on exception flow in DeployInfrastructureCommand.cs:96 (/C:/Projects/clio/clio/Command/DeployInfrastructureCommand.cs:96), DeployInfrastructureCommand.cs:99 (/C:/Projects/clio/clio/Command/DeployInfrastructureCommand.cs:99), so missing kubectl can be reported as installed.
+2. High: false-success path in browser launch on macOS.
+   OpenAppCommand.cs:39 (/C:/Projects/clio/clio/Command/OpenAppCommand.cs:39) uses waitForExit:false; with current executor behavior, launch failure is not propagated, and command can still return 0.
+3. Medium: regression in logging stream behavior breaks existing command/test expectations.
+   Errors were moved to stderr in ConsoleLogger.cs:93 (/C:/Projects/clio/clio/Common/ConsoleLogger.cs:93), ConsoleLogger.cs:95 (/C:/Projects/clio/clio/Common/ConsoleLogger.cs:95).
+   Current suite shows failing assertions tied to this behavior change: ConsoleLoggerTests.cs:19 (/C:/Projects/clio/clio.tests/Common/ConsoleLoggerTests.cs:19), ConsoleLoggerTests.cs:58 (/C:/Projects/clio/clio.tests/Common/ConsoleLoggerTests.cs:58), LastCompilationLogCommandTestFixture.cs:76 (/C:/Projects/clio/clio.tests/Command/
+   LastCompilationLogCommandTestFixture.cs:76).
+4. Medium: negative performance risk from unconditional full output buffering for long-running processes.
+   ProcessExecutor.cs:371 (/C:/Projects/clio/clio/Common/ProcessExecutor.cs:371) appends every output line to in-memory buffers even for realtime flows used by restore/deploy paths: RestoreDb.cs:414 (/C:/Projects/clio/clio/Command/RestoreDb.cs:414), CreatioInstallerService.cs:496 (/C:/Projects/clio/clio/Command/CreatioInstallCommand/
+   CreatioInstallerService.cs:496).
+   This can create large allocation/GC pressure on verbose pg_restore output.
+5. Medium: sync-over-async introduced in NuGet path after async refactor.
+   Blocking .Result calls at NuGetManager.cs:209 (/C:/Projects/clio/clio/Package/NuGet/NuGetManager.cs:209) and NugetPackageRestorer.cs:72 (/C:/Projects/clio/clio/Package/NuGet/NugetPackageRestorer.cs:72) can reduce throughput and raise deadlock risk in future hosted/sync-context scenarios.
+6. Medium (security): argument injection surface in command-line construction for pg_restore.
+   RestoreDb.cs:391 (/C:/Projects/clio/clio/Command/RestoreDb.cs:391) builds raw argument string from config/user-derived fields (Hostname, Username, dbName) and passes through generic string-based executor API (ProcessExecutor.cs:278 (/C:/Projects/clio/clio/Common/ProcessExecutor.cs:278)).
+   Use tokenized argument APIs (ArgumentList) and stricter input validation to reduce injection risk.

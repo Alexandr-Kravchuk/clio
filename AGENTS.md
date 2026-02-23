@@ -114,7 +114,7 @@ Mandatory agent behavior:
 Entry format:
 ```markdown
 
-## YYYY-MM-DD - <short title>
+## YYYY-MM-DD HH:mm – <short title>
 Context: <why this work happened>
 Decision: <important decision or approach>
 Discovery: <important behavior/constraint learned>

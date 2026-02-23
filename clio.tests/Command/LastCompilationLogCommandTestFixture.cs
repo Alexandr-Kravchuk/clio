@@ -19,6 +19,7 @@ public class LastCompilationLogCommandTestFixture : BaseCommandTests<LastCompila
 	private StringWriter _textWriter;
 	private StringBuilder _sb;
 	private TextWriter _originalTextWriter;
+	private TextWriter _originalErrorWriter;
 
 	#endregion
 
@@ -30,9 +31,11 @@ public class LastCompilationLogCommandTestFixture : BaseCommandTests<LastCompila
 		ConsoleLogger.Instance.Start();
 		_applicationClientMock = Substitute.For<IApplicationClient>();
 		_sb = new();
-		_textWriter = new(_sb);
+		_textWriter = new StringWriter(_sb);
 		_originalTextWriter = Console.Out;
+		_originalErrorWriter = Console.Error;
 		Console.SetOut(_textWriter);
+		Console.SetError(_textWriter);
 	}
 	
 	
@@ -42,8 +45,9 @@ public class LastCompilationLogCommandTestFixture : BaseCommandTests<LastCompila
 	}
 
 	[OneTimeTearDown]
-	public void TearDown(){
+	public void OneTearDown(){
 		Console.SetOut(_originalTextWriter);
+		Console.SetError(_originalTextWriter);
 		_sb.Clear();
 		_textWriter.Flush();
 		_textWriter.Close();

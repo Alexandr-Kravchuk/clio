@@ -23,6 +23,7 @@ public class OpenAppCommandTests : BaseCommandTests<OpenAppOptions>{
 	private IProcessExecutor _processExecutor;
 	private ISettingsRepository _settingsRepository;
 	private IWebBrowser _webBrowser;
+	private ILogger _logger;
 
 	#endregion
 
@@ -300,8 +301,9 @@ public class OpenAppCommandTests : BaseCommandTests<OpenAppOptions>{
 		_webBrowser = Substitute.For<IWebBrowser>();
 		_processExecutor = Substitute.For<IProcessExecutor>();
 		_settingsRepository = Substitute.For<ISettingsRepository>();
+		_logger = Substitute.For<ILogger>();
 		_command = new OpenAppCommand(_applicationClient, _environmentSettings, _webBrowser, _processExecutor,
-			_settingsRepository);
+			_settingsRepository, _logger);
 	}
 
 	#endregion

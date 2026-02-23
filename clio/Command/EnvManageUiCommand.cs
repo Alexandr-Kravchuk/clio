@@ -1041,7 +1041,7 @@ public class EnvManageUiCommand : Command<EnvManageUiOptions>, IEnvManageUiComma
 			settings,
 			_webBrowser,
 			_processExecutor,
-			_settingsRepository);
+			_settingsRepository, _logger);
 		return command.Execute(new OpenAppOptions { Environment = envName });
 	}
 

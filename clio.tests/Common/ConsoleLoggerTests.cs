@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 using System.Threading;
 using Clio.Common;
@@ -6,6 +7,7 @@ using FluentAssertions;
 using NSubstitute;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
+using ILogger = Clio.Common.ILogger;
 
 namespace Clio.Tests.Common;
 
@@ -20,11 +22,12 @@ internal class ConsoleLoggerTests
 
 		// Arrange
 		Program.AddTimeStampToOutput = true;
-		var stringBuilder = new StringBuilder();
-		var textWriter = new System.IO.StringWriter(stringBuilder);
+		StringBuilder stringBuilder = new StringBuilder();
+		StringWriter textWriter = new System.IO.StringWriter(stringBuilder);
 		Console.SetOut(textWriter);
+		Console.SetError(textWriter);
 
-		var logger = ConsoleLogger.Instance;
+		ILogger logger = ConsoleLogger.Instance;
 
 		// Act
 		var timeStamp = DateTime.Now;
@@ -43,7 +46,7 @@ internal class ConsoleLoggerTests
 		Thread.Sleep(300);
 
 		// Assert
-		var consoleText = stringBuilder.ToString();
+		string consoleText = stringBuilder.ToString();
 		AssertTimeStamp(timeStamp, consoleText);
 	}
 
@@ -62,6 +65,7 @@ internal class ConsoleLoggerTests
 		var stringBuilder = new StringBuilder();
 		var textWriter = new System.IO.StringWriter(stringBuilder);
 		Console.SetOut(textWriter);
+		Console.SetError(textWriter);
 
 		var logger = ConsoleLogger.Instance;
 
