@@ -15,8 +15,8 @@ public class OpenAppCommand(
 	EnvironmentSettings environmentSettings,
 	IWebBrowser webBrowser,
 	IProcessExecutor processExecutor,
-	ISettingsRepository settingsRepository,
-	ILogger logger) : RemoteCommand<OpenAppOptions>(applicationClient, environmentSettings){
+	ISettingsRepository settingsRepository
+	) : RemoteCommand<OpenAppOptions>(applicationClient, environmentSettings){
 	#region Methods: Public
 
 	public override int Execute(OpenAppOptions options) {
@@ -44,8 +44,9 @@ public class OpenAppCommand(
 					return 0;
 				}
 
-				logger.WriteError(
+				Logger.WriteError(
 					$"Failed to open url in browser: {env.SimpleloginUri}{Environment.NewLine}{result.ErrorMessage}");
+				return 1;
 			}
 			else {
 				webBrowser.OpenUrl(env.SimpleloginUri);
