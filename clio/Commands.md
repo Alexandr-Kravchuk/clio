@@ -4910,6 +4910,7 @@ clio register
 - Requires administrator privileges
 - Adds clio commands to right-click context menu
 - Makes it easier to run clio commands from File Explorer
+- Returns non-zero when registry import commands fail
 
 ## unregister
 
@@ -4923,6 +4924,7 @@ clio unregister
 - Windows only
 - Requires administrator privileges
 - Removes previously registered context menu entries
+- Returns non-zero when registry delete commands fail
 
 # Command Aliases and References
 

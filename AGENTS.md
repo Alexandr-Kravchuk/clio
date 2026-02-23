@@ -62,6 +62,16 @@ When adding or changing tests, keep structure and assertions consistent.
 - Every test method must have a `[Description("...")]` attribute.
 - All tests must be executable on macOS, Linux, and Windows; avoid OS-specific commands/paths unless the test explicitly validates OS-specific behavior.
 
+## Command tests
+
+When testing command classes:
+
+- Prefer `BaseCommandTests<TOptions>` as the fixture base class for command tests.
+- Do not add `[Category("UnitTests")]` when a fixture already inherits from `BaseCommandTests<TOptions>`.
+- Register test doubles and command-specific dependencies in `AdditionalRegistrations(IServiceCollection containerBuilder)`.
+- Resolve command system-under-test instances from the DI container in setup (`Container.GetRequiredService<TCommand>()`) instead of constructing with `new`.
+- Clear substitute received calls in teardown (`ClearReceivedCalls`) to avoid cross-test interference.
+
 # Instance creation and DI policy
 
 Prefer resolving instances from the DI container and avoid manual construction via `new` for behavior-bearing classes.

@@ -264,3 +264,59 @@ Decision: Injected IProcessExecutor into RestoreDbCommand and replaced ExecutePg
 Discovery: Constructor-based tests for RestoreDb required DI argument updates to include IProcessExecutor substitute.
 Files: clio/Command/RestoreDb.cs, clio.tests/Command/RestoreDb.LocalServer.Tests.cs, clio.tests/Command/RestoreDb.Tests.cs, .codex/workspace-diary.md
 Impact: RestoreDb no longer triggers CLIO004 in this file and pg_restore execution now follows shared process abstraction.
+
+## 2026-02-23 - Clear CLIO warnings in RegisterCommand.cs
+Context: User requested resolving all CLIO diagnostics reported in RegisterCommand.cs.
+Decision: Reworked RegisterCommand/UnregisterCommand to use ILogger + IProcessExecutor + System.IO.Abstractions IFileSystem, removed direct Console/Process/System.IO usage, switched Program verb mapping from CreateCommand<> to Resolve<> for DI-backed construction, and replaced CreatioEnvironment manual construction with AppContext.BaseDirectory path resolution.
+Discovery: ICreatioEnvironment is internal, so it cannot appear in a public constructor signature; AppContext.BaseDirectory keeps behavior and avoids CLIO001.
+Files: clio/Command/RegisterCommand.cs, clio/Program.cs, .codex/workspace-diary.md
+Impact: RegisterCommand.cs no longer emits CLIO001/002/003/004 diagnostics while preserving register/unregister command behavior.
+
+## 2026-02-23 - Add tests for RegisterCommand/UnregisterCommand after abstraction migration
+Context: User requested test coverage for RegisterCommand after replacing direct Console/Process/System.IO usage with abstractions.
+Decision: Added RegisterCommandTests with cross-platform-safe cases: non-Windows register behavior, unregister success path (verifying process commands), and unregister exception handling.
+Discovery: RegisterCommand OS-branch behavior is platform-dependent; non-Windows test is intentionally skipped on Windows to keep suite executable across OSes.
+Files: clio.tests/Command/RegisterCommand.Tests.cs, .codex/workspace-diary.md
+Impact: Command now has direct unit coverage validating logger and process-executor interactions introduced by abstraction refactor.
+
+## 2026-02-23 - Register RegisterCommand tests use DI-resolved SUT and teardown call reset
+Context: User requested RegisterCommand tests to register test doubles through AdditionalRegistrations, resolve system-under-test from DI, and clear mock interactions between tests.
+Decision: Added explicit DI registrations for RegisterCommand and UnregisterCommand in test AdditionalRegistrations so setup resolves both commands from the container; kept logger/process-executor substitutes registered as singletons; retained TearDown call reset with ClearReceivedCalls on both substitutes.
+Discovery: Base test module does not auto-register concrete command types without interface mapping, so container resolution fails unless commands are explicitly added for this test fixture.
+Files: clio.tests/Command/RegisterCommand.Tests.cs, .codex/workspace-diary.md
+Impact: RegisterCommand test fixture now matches repository DI testing style and avoids cross-test interference from stale substitute invocations.
+
+## 2026-02-23 - Align command-test conventions in RegisterCommand tests and AGENTS
+Context: User requested removing redundant UnitTests category from a BaseCommandTests-based fixture and documenting command test conventions.
+Decision: Removed `[Category("UnitTests")]` from `RegisterCommandTests` and added a new `## Command tests` section in `AGENTS.md` defining BaseCommandTests usage, DI registration via `AdditionalRegistrations`, container-resolved SUT setup, and teardown call clearing.
+Discovery: `BaseCommandTests<TOptions>` already provides command-test categorization context, so explicit UnitTests category is unnecessary and was intentionally removed.
+Files: clio.tests/Command/RegisterCommand.Tests.cs, AGENTS.md, .codex/workspace-diary.md
+Impact: Test fixture now follows the agreed command-test style and repository guidance now explicitly captures the expected DI-based testing pattern.
+
+## 2026-02-23 - Enforce process exit-code checks in register/unregister commands
+Context: User requested register and unregister commands to fail with non-zero exit code and clear error messaging when process execution fails.
+Decision: Replaced fire-and-forget string-only process calls with `IProcessExecutor.ExecuteAndCaptureAsync` checks in both RegisterCommand and UnregisterCommand, validating `Started` and `ExitCode == 0` before continuing.
+Discovery: Existing unregister help text claimed idempotent success when registry keys are missing; this no longer matches behavior once non-zero exit codes are treated as failures.
+Files: clio/Command/RegisterCommand.cs, clio.tests/Command/RegisterCommand.Tests.cs, clio/help/en/register.txt, clio/help/en/unregister.txt, clio/Commands.md, .codex/workspace-diary.md
+Impact: Registry command failures are now surfaced to users immediately with error logs and non-zero command exit codes; tests and docs now reflect enforced failure semantics.
+
+## 2026-02-23 - Add dedicated UnregisterCommand test fixture
+Context: User requested explicit unit tests for UnregisterCommand.
+Decision: Split unregister scenarios out of RegisterCommandTests and created `UnregisterCommandTests : BaseCommandTests<UnregisterOptions>` with DI-based setup, AdditionalRegistrations, and teardown call clearing.
+Discovery: Because `UnregisterOptions` is internal, the test fixture class must be internal to avoid CS0060 inconsistent accessibility.
+Files: clio.tests/Command/RegisterCommand.Tests.cs, clio.tests/Command/UnregisterCommand.Tests.cs, .codex/workspace-diary.md
+Impact: Unregister behavior now has dedicated, focused coverage for success, exception, and non-zero exit code paths while keeping RegisterCommand tests scoped to register behavior.
+
+## 2026-02-23 - Restore RegisterCommand test coverage via OS abstraction
+Context: User reported RegisterCommandTests coverage regressed to a single non-Windows case after splitting unregister tests.
+Decision: Introduced `IOperationSystem` and injected it into RegisterCommand so tests can deterministically cover Windows/admin and registry import result paths without relying on host OS or privileges.
+Discovery: Static `OperationSystem.Current` checks prevented practical unit coverage for success and admin-path failures; abstraction eliminated environment coupling.
+Files: clio/Common/System.cs, clio/Command/RegisterCommand.cs, clio.tests/Command/RegisterCommand.Tests.cs, .codex/workspace-diary.md
+Impact: RegisterCommand tests now cover non-Windows, no-admin, first import failure, and successful Windows registration paths while keeping tests cross-platform executable.
+
+## 2026-02-23 - Fix full-suite regressions from CreatioPackage logger null and test CWD leakage
+Context: User reported 10 failing tests after recent command/test refactors.
+Decision: Added logger fallback in CreatioPackage process execution (`_logger ?? ConsoleLogger.Instance`) and hardened `CreatioPkgTests` by wrapping `Environment.CurrentDirectory` and `PATH` mutations in `try/finally` with guaranteed restoration.
+Discovery: A null logger in `CreatioPackage.ExecuteDotnetCommand` caused package creation failures, and failing integration tests left process CWD altered, cascading into unrelated YAML scenario test failures.
+Files: clio/Package/CreatioPackage.cs, clio.tests/CreatioPkgTests.cs, .codex/workspace-diary.md
+Impact: Full `clio.tests` suite now passes again with no cascading environment-state pollution between tests.

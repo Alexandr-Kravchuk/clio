@@ -95,9 +95,21 @@ public class CreatioPkgTests
 	public void CreatioPkg_Create_CheckPackageStructure()
 	{
 		var oldEnvironment = Environment.CurrentDirectory;
-		Environment.CurrentDirectory = Path.Combine(Environment.CurrentDirectory, ResultDir);
-		var pkg = CreatioPackage.CreatePackage(PackageName, Maintainer);
-		Environment.CurrentDirectory = oldEnvironment;
+		CreatioPackage pkg;
+		try
+		{
+			string workDirPath = Path.Combine(Environment.CurrentDirectory, ResultDir);
+			if (!System.IO.Directory.Exists(workDirPath))
+			{
+				System.IO.Directory.CreateDirectory(workDirPath);
+			}
+			Environment.CurrentDirectory = workDirPath;
+			pkg = CreatioPackage.CreatePackage(PackageName, Maintainer);
+		}
+		finally
+		{
+			Environment.CurrentDirectory = oldEnvironment;
+		}
 		pkg.Create();
 		File(Path.Combine(pkg.FullPath, CreatioPackage.DescriptorName)).Should().Exist();
 		File(Path.Combine(pkg.FullPath, PackageName + "." + CreatioPackage.CsprojExtension)).Should().Exist();
@@ -124,12 +136,24 @@ public class CreatioPkgTests
 	{
 		var oldCD = Environment.CurrentDirectory;
 		var oldPath = Environment.GetEnvironmentVariable("PATH");
-		Environment.CurrentDirectory = Path.Combine(Environment.CurrentDirectory, ResultDir);
-		Environment.SetEnvironmentVariable("PATH", oldCD + ";C:\\Program Files\\dotnet");
-		var pkg = CreatioPackage.CreatePackage(PackageName, Maintainer);
-		pkg.Create();
-		Environment.CurrentDirectory = oldCD;
-		Environment.SetEnvironmentVariable("PATH", oldPath);
+		CreatioPackage pkg;
+		try
+		{
+			string workDirPath = Path.Combine(Environment.CurrentDirectory, ResultDir);
+			if (!System.IO.Directory.Exists(workDirPath))
+			{
+				System.IO.Directory.CreateDirectory(workDirPath);
+			}
+			Environment.CurrentDirectory = workDirPath;
+			Environment.SetEnvironmentVariable("PATH", oldCD + ";C:\\Program Files\\dotnet");
+			pkg = CreatioPackage.CreatePackage(PackageName, Maintainer);
+			pkg.Create();
+		}
+		finally
+		{
+			Environment.CurrentDirectory = oldCD;
+			Environment.SetEnvironmentVariable("PATH", oldPath);
+		}
 		var resultPath = Path.Combine(pkg.FullPath, CreatioPackage.PackageConfigName);
 		var samplePath = Path.Combine(Environment.CurrentDirectory, ExpectFilesDir, CreatioPackage.PackageConfigName);
 		File(resultPath).Should().Exist();

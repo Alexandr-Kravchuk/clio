@@ -59,7 +59,7 @@ REGISTRY FILES USED
 
 EXIT CODES
     0   Successfully registered context menu
-    1   Failed to register (not Windows, no admin rights, or error occurred)
+    1   Failed to register (not Windows, no admin rights, registry import failed, or other error occurred)
 
 NOTES
     - This command only works on Windows operating systems
@@ -78,6 +78,7 @@ TROUBLESHOOTING
     - Verify you're running as Administrator
     - Check that registry files exist in clio\reg folder
     - Ensure icon files exist in clio\img folder
+    - Verify `reg import` commands complete successfully and do not return non-zero exit codes
     - Try unregistering first, then registering again
 
 SEE ALSO

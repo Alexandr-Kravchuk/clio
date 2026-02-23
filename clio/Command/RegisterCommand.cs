@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO;
+using System.IO.Abstractions;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Clio.Common;
-using Clio.UserEnvironment;
 using CommandLine;
+using IFileSystem = System.IO.Abstractions.IFileSystem;
 
 namespace Clio.Command;
 
@@ -23,21 +21,35 @@ public class RegisterOptions{
 	#endregion
 }
 
-[Verb("unregister", HelpText = "Unregister clio commands in context menu")]
-internal class UnregisterOptions{
-	#region Properties: Public
+public class RegisterCommand : Command<RegisterOptions>{
+	#region Fields: Private
 
-	[Option('t', "Target", Default = "u", HelpText = "Target environment location. Could be user location or" +
-													 " machine location. Use 'u' for set user location and 'm' to set machine location.")]
-	public string Target { get; set; }
-
-	[Option('p', "Path", HelpText = "Path where clio is stored.")]
-	public string Path { get; set; }
+	private readonly IFileSystem _fileSystem;
+	private readonly ILogger _logger;
+	private readonly IOperationSystem _operationSystem;
+	private readonly IProcessExecutor _processExecutor;
 
 	#endregion
-}
 
-public class RegisterCommand : Command<RegisterOptions>{
+	#region Constructors: Public
+
+	/// <summary>
+	///     Initializes a new instance of the <see cref="RegisterCommand" /> class.
+	/// </summary>
+	/// <param name="logger">Logger used for command output.</param>
+	/// <param name="processExecutor">Process executor used to run system commands.</param>
+	/// <param name="fileSystem">Filesystem abstraction used for path and file operations.</param>
+	/// <param name="operationSystem">Operating system abstraction used for OS and privilege checks.</param>
+	public RegisterCommand(ILogger logger, IProcessExecutor processExecutor, IFileSystem fileSystem,
+		IOperationSystem operationSystem) {
+		_logger = logger;
+		_processExecutor = processExecutor;
+		_fileSystem = fileSystem;
+		_operationSystem = operationSystem;
+	}
+
+	#endregion
+
 	#region Methods: Private
 
 	/// <summary>
@@ -48,34 +60,42 @@ public class RegisterCommand : Command<RegisterOptions>{
 	///     <see href="https://code.visualstudio.com/docs/editor/command-line#_working-with-extensions">working with extensions</see>
 	///     vscode cli documentation
 	/// </remarks>
-	private async Task InstallVsCodeExtension() {
+	private void InstallVsCodeExtension() {
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
 			//Check if extension is installed
-			using (Process process = Process.Start(new ProcessStartInfo {
-					   FileName = "cmd.exe",
-					   Arguments = "/c code --list-extensions",
-					   UseShellExecute = false,
-					   RedirectStandardOutput = true,
-					   CreateNoWindow = true
-				   })) {
-				string extensions = await process.StandardOutput.ReadToEndAsync();
-				if (extensions.Contains("AdvanceTechnologiesFoundation.clio-explorer")) {
-					Console.WriteLine("clio-explorer is already installed");
-					return;
-				}
+			string extensions
+				= _processExecutor.Execute("cmd.exe", "/c code --list-extensions", true, suppressErrors: true);
+			if (extensions.Contains("AdvanceTechnologiesFoundation.clio-explorer",
+					StringComparison.OrdinalIgnoreCase)) {
+				_logger.WriteLine("clio-explorer is already installed");
+				return;
 			}
 
 			// install extension
-			using (Process process = Process.Start(new ProcessStartInfo {
-					   FileName = "cmd.exe",
-					   Arguments = "/c code --install-extension AdvanceTechnologiesFoundation.clio-explorer --force",
-					   UseShellExecute = false,
-					   RedirectStandardOutput = true,
-					   CreateNoWindow = true
-				   })) {
-				string installLog = await process.StandardOutput.ReadToEndAsync();
-			}
+			_processExecutor.Execute("cmd.exe",
+				"/c code --install-extension AdvanceTechnologiesFoundation.clio-explorer --force",
+				true, suppressErrors: true);
 		}
+	}
+
+	private bool TryExecuteProcess(string program, string arguments, string operationDescription) {
+		ProcessExecutionResult result = _processExecutor.ExecuteAndCaptureAsync(
+			new ProcessExecutionOptions(program, arguments) {
+				SuppressErrors = true
+			}).GetAwaiter().GetResult();
+
+		if (!result.Started) {
+			_logger.WriteError($"Failed to {operationDescription}: process was not started. {result.StandardError}");
+			return false;
+		}
+
+		if (result.ExitCode is not 0) {
+			_logger.WriteError(
+				$"Failed to {operationDescription}: process exited with code {result.ExitCode}. {result.StandardError}");
+			return false;
+		}
+
+		return true;
 	}
 
 	#endregion
@@ -84,60 +104,47 @@ public class RegisterCommand : Command<RegisterOptions>{
 
 	public override int Execute(RegisterOptions options) {
 		try {
-			if (OperationSystem.Current.IsWindows) {
-				if (!OperationSystem.Current.HasAdminRights()) {
-					Console.WriteLine("Clio register command need admin rights.");
+			if (_operationSystem.IsWindows) {
+				if (!_operationSystem.HasAdminRights()) {
+					_logger.WriteLine("Clio register command need admin rights.");
 					return 1;
 				}
 
 				string folder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-				string appDataClioFolderPath = Path.Combine(folder, "clio");
-				Directory.CreateDirectory(appDataClioFolderPath);
-				CreatioEnvironment environment = new();
-				string clioIconPath = Path.Combine(environment.GetAssemblyFolderPath(), "img");
-				DirectoryInfo imgFolder = new(clioIconPath);
-				FileInfo[] allImgFiles = imgFolder.GetFiles();
-				foreach (FileInfo imgFile in allImgFiles) {
-					string destImgFilePath = Path.Combine(appDataClioFolderPath, imgFile.Name);
+				string appDataClioFolderPath = _fileSystem.Path.Combine(folder, "clio");
+				_fileSystem.Directory.CreateDirectory(appDataClioFolderPath);
+				string assemblyFolderPath = AppContext.BaseDirectory;
+				string clioIconPath = _fileSystem.Path.Combine(assemblyFolderPath, "img");
+				IDirectoryInfo imgFolder = _fileSystem.DirectoryInfo.New(clioIconPath);
+				IFileInfo[] allImgFiles = imgFolder.GetFiles();
+				foreach (IFileInfo imgFile in allImgFiles) {
+					string destImgFilePath = _fileSystem.Path.Combine(appDataClioFolderPath, imgFile.Name);
 					imgFile.CopyTo(destImgFilePath, true);
 				}
 
-				string unreg_file_name = Path.Combine(environment.GetAssemblyFolderPath(), "reg",
+				string unregFileName = _fileSystem.Path.Combine(assemblyFolderPath, "reg",
 					"unreg_clio_context_menu_win.reg");
-				string reg_file_name = Path.Combine(environment.GetAssemblyFolderPath(), "reg",
+				string regFileName = _fileSystem.Path.Combine(assemblyFolderPath, "reg",
 					"clio_context_menu_win.reg");
-				Process unregProcess = Process.Start(new ProcessStartInfo("cmd", $"/c reg import  {unreg_file_name}")
-					{ CreateNoWindow = true });
-				unregProcess.WaitForExit();
-				Process.Start(new ProcessStartInfo("cmd", $"/c reg import  {reg_file_name}") { CreateNoWindow = true });
-				Console.WriteLine("Clio context menu successfully registered.");
+				if (!TryExecuteProcess("cmd", $"/c reg import \"{unregFileName}\"",
+						"import unregister context menu registry file")) {
+					return 1;
+				}
+
+				if (!TryExecuteProcess("cmd", $"/c reg import \"{regFileName}\"",
+						"import context menu registry file")) {
+					return 1;
+				}
+
+				_logger.WriteLine("Clio context menu successfully registered.");
 				return 0;
 			}
 
-			Console.WriteLine("Clio register command is only supported on: 'windows'.");
+			_logger.WriteLine("Clio register command is only supported on: 'windows'.");
 			return 1;
 		}
 		catch (Exception e) {
-			Console.WriteLine(e);
-			return 1;
-		}
-	}
-
-	#endregion
-}
-
-internal class UnregisterCommand : Command<UnregisterOptions>{
-	#region Methods: Public
-
-	public override int Execute(UnregisterOptions options) {
-		try {
-			Process.Start(new ProcessStartInfo("cmd", "/c reg delete HKEY_CLASSES_ROOT\\Folder\\shell\\clio /f"));
-			Process.Start(new ProcessStartInfo("cmd", "/c reg delete HKEY_CLASSES_ROOT\\*\\shell\\clio /f"));
-			Console.WriteLine("Clio context menu successfully unregistered");
-			return 0;
-		}
-		catch (Exception e) {
-			Console.WriteLine(e);
+			_logger.WriteError(e.ToString());
 			return 1;
 		}
 	}

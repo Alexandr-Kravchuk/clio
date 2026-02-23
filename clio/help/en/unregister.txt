@@ -57,14 +57,13 @@ REGISTRY KEYS DELETED
 
 EXIT CODES
     0   Successfully unregistered context menu
-    1   Failed to unregister (error occurred)
+    1   Failed to unregister (registry delete command failed or other error occurred)
 
 NOTES
     - This command only works on Windows operating systems
     - Administrator privileges are recommended for reliable operation
     - Icon files in %APPDATA%\clio\ are not removed
-    - Safe to run multiple times (idempotent operation)
-    - If registry keys don't exist, the command still succeeds
+    - Command returns non-zero when any registry delete command exits with a non-zero code
 
 MANUAL CLEANUP
     To manually remove icon files:

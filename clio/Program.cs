@@ -185,8 +185,8 @@ internal class Program {
 							CreateCommand<ReferenceCommand>(new CreatioPkgProjectCreator()), ConsoleLogger.Instance)
 						.Execute(opts),
 					ConvertOptions opts => ConvertPackage(opts),
-					RegisterOptions opts => CreateCommand<RegisterCommand>().Execute(opts),
-					UnregisterOptions opts => CreateCommand<UnregisterCommand>().Execute(opts),
+					RegisterOptions opts => Resolve<RegisterCommand>().Execute(opts),
+					UnregisterOptions opts => Resolve<UnregisterCommand>().Execute(opts),
 					PullPkgOptions opts => DownloadZipPackages(opts),
 					ExecuteSqlScriptOptions opts => Resolve<SqlScriptCommand>(opts).Execute(opts),
 					InstallGateOptions opts => Resolve<InstallGatePkgCommand>(CreateClioGatePkgOptions(opts))

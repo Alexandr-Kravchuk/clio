@@ -93,7 +93,8 @@ namespace Clio
 		}
 
 		private void ExecuteDotnetCommand(string command) {
-			IProcessExecutor processExecutor = new ProcessExecutor(_logger);
+			ILogger logger = _logger ?? ConsoleLogger.Instance;
+			IProcessExecutor processExecutor = new ProcessExecutor(logger);
 			IDotnetExecutor dotnetExecutor = new DotnetExecutor(processExecutor);
 			dotnetExecutor.Execute(command, true, FullPath);
 		}
