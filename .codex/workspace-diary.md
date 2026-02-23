@@ -194,3 +194,31 @@ Decision: Added dedicated NUnit test suites in Clio.Analyzers.Tests using existi
 Discovery: CLIO001 behavior can be validated with minimal in-source Microsoft.Extensions.DependencyInjection stubs, avoiding external analyzer-testing harness complexity while exercising semantic registration detection.
 Files: Clio.Analyzers.Tests/ConsoleOutputAnalyzerTests.cs, Clio.Analyzers.Tests/DependencyInjectionManualConstructionAnalyzerTests.cs, .codex/workspace-diary.md
 Impact: Analyzer regressions for CLIO001/CLIO002 are now protected by automated tests alongside existing CLIO003 coverage.
+
+## 2026-02-23 - Replace Console output in CreatioInstallerService for CLIO002
+Context: User requested addressing CLIO002 warning(s) in CreatioInstallerService.
+Decision: Replaced direct Console.Write/Console.WriteLine calls in CreatioInstallerService with injected ILogger (_logger.Write/_logger.WriteLine) while keeping Console.ReadLine input handling intact.
+Discovery: deploy-creatio command contract/options were unchanged; command docs were reviewed and no updates were required.
+Files: clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, .codex/workspace-diary.md
+Impact: CLIO002 no longer reports for CreatioInstallerService write calls, preserving user-visible messaging flow through logger abstraction.
+
+## 2026-02-23 - Add XML docs for InstallerCommand public API
+Context: User reported AGENTS.md C# inline documentation policy violation after public API changes in InstallerCommand.cs.
+Decision: Added XML documentation comments for public types, constructor, Execute method, and all public options properties in PfInstallerOptions.
+Discovery: InstallerCommand.cs had existing public API surface without XML docs; policy requires explicit /// documentation when changing public members.
+Files: clio/Command/CreatioInstallCommand/InstallerCommand.cs, .codex/workspace-diary.md
+Impact: Installer command public API now aligns with repository XML documentation requirements and avoids future ambiguity for CLI option semantics.
+
+## 2026-02-23 - Add XML docs to CreatioInstallerService public API
+Context: User requested making CreatioInstallerService compliant with AGENTS.md C# inline documentation policy.
+Decision: Added interface-first XML documentation to ICreatioInstallerService and used <inheritdoc /> on implemented members in CreatioInstallerService; documented public constructors and non-interface public methods.
+Discovery: Public API surface included ICreatioInstallerService methods, CreatioInstallerService constructors, CreateDeployDirectory, Execute override, and browser/build helper methods.
+Files: clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, .codex/workspace-diary.md
+Impact: Creatio installer public API is now self-documented and aligned with repository XML doc standards without behavior changes.
+
+## 2026-02-23 - Remove CLIO003 usage from CreatioInstallerService via abstraction-first path flow
+Context: User requested implementing the approved plan to address CLIO003 warnings in CreatioInstallerService.
+Decision: Switched CreatioInstallerService filesystem operations to System.IO.Abstractions + Clio filesystem abstractions, migrated DoPgWork contract to path-based signature, added InstallerHelper path-based helpers, and updated deployment strategy contract to accept app directory path.
+Discovery: Full removal inside CreatioInstallerService required avoiding DirectoryInfo/FileInfo flow through strategy/helper boundaries; path-based contracts kept behavior while removing direct System.IO usage in the target file.
+Files: clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/Command/RestoreDb.cs, clio/Command/InstallerHelper.cs, clio/Common/DeploymentStrategies/IDeploymentStrategy.cs, clio/Common/DeploymentStrategies/IISDeploymentStrategy.cs, clio/Common/DeploymentStrategies/DotNetDeploymentStrategy.cs, .codex/workspace-diary.md
+Impact: dotnet build shows zero CLIO003 diagnostics for CreatioInstallerService.cs; deploy/restore flows remain functionally intact with abstraction-friendly contracts.

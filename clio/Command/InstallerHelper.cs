@@ -81,6 +81,16 @@ public static class InstallerHelper
 					   false => Unzip(packageArchiver, new FileInfo(zipFile), destinationPath)
 				   };
 		};
+
+	/// <summary>
+	/// Unzips a package or returns an existing extracted directory path.
+	/// </summary>
+	/// <param name="zipFile">The full path of the zip file or extracted directory.</param>
+	/// <param name="packageArchiver">The package archiver instance used for extraction.</param>
+	/// <returns>Full path of the existing or newly created extraction directory.</returns>
+	public static string UnzipOrTakeExistingOldPath(string zipFile, IPackageArchiver packageArchiver) {
+		return UnzipOrTakeExistingOld(zipFile, packageArchiver).FullName;
+	}
 	
 	
 	/// <summary>
@@ -164,6 +174,15 @@ public static class InstallerHelper
 			_ => throw new Exception($"Unknown backup file extension: {fi.Extension} for file {fi.FullName}")
 		};
 	};
+
+	/// <summary>
+	/// Detects database type based on backup files in the extracted application directory.
+	/// </summary>
+	/// <param name="unzippedDirectoryPath">Path to the extracted application directory.</param>
+	/// <returns>The detected database type.</returns>
+	public static DatabaseType DetectDataBaseByPath(string unzippedDirectoryPath) {
+		return DetectDataBase(new DirectoryInfo(unzippedDirectoryPath));
+	}
 	
 	/// <summary>
 	/// Detects the framework used in the provided directory.
@@ -181,6 +200,15 @@ public static class InstallerHelper
 			var _ => throw new Exception(
 				$"Cannot determine framework type, Terrasoft.WebApp or Terrasoft.WebAppCore does not exist in {unzippedDirectory}")
 		};
+
+	/// <summary>
+	/// Detects framework type based on extracted application directory structure.
+	/// </summary>
+	/// <param name="unzippedDirectoryPath">Path to the extracted application directory.</param>
+	/// <returns>The detected framework type.</returns>
+	public static FrameworkType DetectFrameworkByPath(string unzippedDirectoryPath) {
+		return DetectFramework(new DirectoryInfo(unzippedDirectoryPath));
+	}
 	#endregion
 	
 	

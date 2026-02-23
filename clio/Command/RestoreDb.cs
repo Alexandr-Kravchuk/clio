@@ -140,10 +140,9 @@ public class RestoreDbCommand : Command<RestoreDbCommandOptions>
 	}
 
 	private int RestorePg(string dbName, string backupFilePath ){
-		var fileInfo = new FileInfo(backupFilePath);
-		DirectoryInfo directoryInfo = fileInfo.Directory;
+		string directoryPath = Path.GetDirectoryName(backupFilePath);
 		string templateName = Path.GetFileNameWithoutExtension(backupFilePath);
-		return _creatioInstallerService.DoPgWork(directoryInfo, dbName, templateName);
+		return _creatioInstallerService.DoPgWork(directoryPath, dbName, templateName);
 	}
 
 	private int RestoreToLocalServer(RestoreDbCommandOptions options) {

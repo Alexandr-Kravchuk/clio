@@ -56,10 +56,10 @@ public class DotNetDeploymentStrategy : IDeploymentStrategy
 	/// This method should NOT delete the target directory as it may contain the restored database.
 	/// Copies only application binaries and configuration, preserving the database folder.
 	/// </summary>
-	public async Task<int> Deploy(DirectoryInfo appDirectory, PfInstallerOptions options)
+	public async Task<int> Deploy(string appDirectoryPath, PfInstallerOptions options)
 	{
-		if (appDirectory == null)
-			throw new ArgumentNullException(nameof(appDirectory));
+		if (string.IsNullOrWhiteSpace(appDirectoryPath))
+			throw new ArgumentException("Application directory path is required.", nameof(appDirectoryPath));
 
 		if (options == null)
 			throw new ArgumentNullException(nameof(options));
@@ -67,7 +67,7 @@ public class DotNetDeploymentStrategy : IDeploymentStrategy
 		try
 		{
 			_logger.WriteInfo("[Deploy via DotNet] - Started");
-			_logger.WriteInfo($"Target application path: {appDirectory.FullName}");
+			_logger.WriteInfo($"Target application path: {appDirectoryPath}");
 			_logger.WriteInfo($"Configured site port: {options.SitePort}");
 
 			// Validate port is set properly
@@ -85,11 +85,11 @@ public class DotNetDeploymentStrategy : IDeploymentStrategy
             _logger.WriteInfo($"Port {options.SitePort} is available");
             
 			// Create appsettings.json configuration
-			CreateApplicationConfiguration(appDirectory.FullName, options);
+			CreateApplicationConfiguration(appDirectoryPath, options);
 			_logger.WriteInfo("Application configuration created");
 
 			// Start the host application as a background process
-			int? processId = _creatioHostService.StartInBackground(appDirectory.FullName);
+			int? processId = _creatioHostService.StartInBackground(appDirectoryPath);
 			if (processId.HasValue)
 			{
 				_logger.WriteInfo($"Application will be available at: {GetApplicationUrl(options)}");
@@ -98,7 +98,7 @@ public class DotNetDeploymentStrategy : IDeploymentStrategy
 			// Set up service management if on Linux or macOS
 			if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && options.AutoRun)
 			{
-				await SetupServiceManagement(appDirectory.FullName, options);
+				await SetupServiceManagement(appDirectoryPath, options);
 				_logger.WriteInfo("Service management configured");
 			}
 

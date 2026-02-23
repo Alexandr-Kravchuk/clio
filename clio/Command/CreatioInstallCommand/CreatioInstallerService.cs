@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -19,25 +19,63 @@ using Clio.UserEnvironment;
 using MediatR;
 using StackExchange.Redis;
 using IFileSystem = Clio.Common.IFileSystem;
+using MsFileSystem = System.IO.Abstractions.IFileSystem;
 
 namespace Clio.Command.CreatioInstallCommand;
 
+/// <summary>
+///     Defines operations for deploying a Creatio application and restoring its database.
+/// </summary>
 public interface ICreatioInstallerService{
 	#region Methods: Public
 
-	int DoPgWork(DirectoryInfo unzippedDirectory, string destDbName, string templateName = "");
+	/// <summary>
+	///     Restores a PostgreSQL database from unpacked deployment files.
+	/// </summary>
+	/// <param name="unzippedDirectoryPath">Directory path containing extracted deployment artifacts.</param>
+	/// <param name="destDbName">Target the database name to create or restore.</param>
+	/// <param name="templateName">Optional template source name used for template resolution.</param>
+	/// <returns><c>0</c> on success; non-zero otherwise.</returns>
+	int DoPgWork(string unzippedDirectoryPath, string destDbName, string templateName = "");
 
+	/// <summary>
+	///     Executes the full deployment flow for the provided installer options.
+	/// </summary>
+	/// <param name="options">Parsed deploy-creatio command options.</param>
+	/// <returns><c>0</c> on success; non-zero otherwise.</returns>
 	int Execute(PfInstallerOptions options);
 
+	/// <summary>
+	///     Resolves a build artifact path based on product, database type, and runtime platform.
+	/// </summary>
+	/// <param name="product">Product name or product key.</param>
+	/// <param name="dBType">Database type used to select the build artifact.</param>
+	/// <param name="runtimePlatform">Runtime platform used to select the build artifact.</param>
+	/// <returns>Full path to the selected build artifact.</returns>
 	string GetBuildFilePathFromOptions(string product, CreatioDBType dBType,
 		CreatioRuntimePlatform runtimePlatform);
 
+	/// <summary>
+	///     Opens the deployed application URL in the default browser using non-IIS URL format.
+	/// </summary>
+	/// <param name="options">Deployment options containing site port configuration.</param>
+	/// <returns><c>0</c> on success; non-zero otherwise.</returns>
 	int StartWebBrowser(PfInstallerOptions options);
+
+	/// <summary>
+	///     Opens the deployed application URL in the default browser.
+	/// </summary>
+	/// <param name="options">Deployment options containing site port configuration.</param>
+	/// <param name="isIisDeployment">Whether an IIS URL format should be used.</param>
+	/// <returns><c>0</c> on success; non-zero otherwise.</returns>
 	int StartWebBrowser(PfInstallerOptions options, bool isIisDeployment);
 
 	#endregion
 }
 
+/// <summary>
+///     Default implementation of <see cref="ICreatioInstallerService" /> for deploy-creatio command execution.
+/// </summary>
 public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInstallerService{
 	#region Fields: Private
 
@@ -45,6 +83,8 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	private readonly IDbClientFactory _dbClientFactory;
 	private readonly IDbConnectionTester _dbConnectionTester;
 	private readonly DeploymentStrategyFactory _deploymentStrategyFactory;
+	private readonly string[] _excludedDirectories = ["db"];
+	private readonly string[] _excludedExtensions = [".bak", ".backup"];
 	private readonly IFileSystem _fileSystem;
 	private readonly HealthCheckCommand _healthCheckCommand;
 
@@ -52,47 +92,40 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	private readonly k8Commands _k8;
 	private readonly ILogger _logger;
 	private readonly IMediator _mediator;
+	private readonly MsFileSystem _msFileSystem;
 	private readonly IPackageArchiver _packageArchiver;
 	private readonly IPostgresToolsPathDetector _postgresToolsPathDetector;
+
+	private readonly string _productFolder;
 	private readonly RegAppCommand _registerCommand;
+	private readonly string _remoteArtefactServerPath;
 	private readonly ISettingsRepository _settingsRepository;
-	private readonly string[] _excludedDirectories = ["db"];
-
-	private readonly string[] _excludedExtensions = [".bak", ".backup"];
 
 	#endregion
-
-	#region Fields: Protected
-
-	protected string ProductFolder;
-	protected string RemoteArtefactServerPath;
-
-	#endregion
-
-	private static readonly Action<string, string, IProgress<double>> CopyFileWithProgress =
-		(sourcePath, destinationPath, progress) => {
-			const int bufferSize = 1024 * 1024; // 1MB
-			byte[] buffer = new byte[bufferSize];
-			int bytesRead;
-
-			using FileStream sourceStream = new(sourcePath, FileMode.Open, FileAccess.Read);
-			long totalBytes = sourceStream.Length;
-
-			using FileStream destinationStream = new(destinationPath, FileMode.OpenOrCreate, FileAccess.Write);
-			while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
-				destinationStream.Write(buffer, 0, bytesRead);
-
-				// Report progress
-				double percentage = 100d * sourceStream.Position / totalBytes;
-				progress.Report(percentage);
-			}
-		};
 
 	#region Constructors: Public
 
+	/// <summary>
+	///     Initializes a new instance of the <see cref="CreatioInstallerService" /> class.
+	/// </summary>
+	/// <param name="packageArchiver">Archive service used to unpack deployment files.</param>
+	/// <param name="k8">Kubernetes command facade.</param>
+	/// <param name="mediator">Mediator for scenario handler requests.</param>
+	/// <param name="registerCommand">Command used to register the deployed application environment.</param>
+	/// <param name="settingsRepository">Settings repository for deployment paths and defaults.</param>
+	/// <param name="fileSystem">Filesystem abstraction.</param>
+	/// <param name="msFileSystem">System.IO.Abstractions filesystem facade.</param>
+	/// <param name="logger">Logger for user-facing deployment output.</param>
+	/// <param name="deploymentStrategyFactory">Factory for platform-specific deployment strategy selection.</param>
+	/// <param name="healthCheckCommand">Health check command used for readiness verification.</param>
+	/// <param name="dbClientFactory">Factory for database client instances.</param>
+	/// <param name="dbConnectionTester">Service for validating DB connectivity before restore.</param>
+	/// <param name="backupFileDetector">Service for detecting a backup file type.</param>
+	/// <param name="postgresToolsPathDetector">Detector for PostgreSQL tools installation paths.</param>
 	public CreatioInstallerService(IPackageArchiver packageArchiver, k8Commands k8,
 		IMediator mediator, RegAppCommand registerCommand, ISettingsRepository settingsRepository,
-		IFileSystem fileSystem, ILogger logger, DeploymentStrategyFactory deploymentStrategyFactory,
+		IFileSystem fileSystem, MsFileSystem msFileSystem, ILogger logger,
+		DeploymentStrategyFactory deploymentStrategyFactory,
 		HealthCheckCommand healthCheckCommand, IDbClientFactory dbClientFactory,
 		IDbConnectionTester dbConnectionTester, IBackupFileDetector backupFileDetector,
 		IPostgresToolsPathDetector postgresToolsPathDetector) {
@@ -101,9 +134,10 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		_mediator = mediator;
 		_registerCommand = registerCommand;
 		_fileSystem = fileSystem;
+		_msFileSystem = msFileSystem;
 		_iisRootFolder = settingsRepository.GetIISClioRootPath();
-		ProductFolder = settingsRepository.GetCreatioProductsFolder();
-		RemoteArtefactServerPath = settingsRepository.GetRemoteArtefactServerPath();
+		_productFolder = settingsRepository.GetCreatioProductsFolder();
+		_remoteArtefactServerPath = settingsRepository.GetRemoteArtefactServerPath();
 		_logger = logger;
 		_deploymentStrategyFactory = deploymentStrategyFactory;
 		_healthCheckCommand = healthCheckCommand;
@@ -114,6 +148,12 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		_postgresToolsPathDetector = postgresToolsPathDetector;
 	}
 
+	/// <summary>
+	///     Initializes a new instance of the <see cref="CreatioInstallerService" /> class.
+	/// </summary>
+	/// <remarks>
+	///     Parameterless constructor exists for tooling and test scenarios that require delayed initialization.
+	/// </remarks>
 	public CreatioInstallerService() { }
 
 	#endregion
@@ -161,6 +201,38 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		}
 	}
 
+	private string BuildMssqlConnectionString(LocalDbServerConfiguration dbConfig, string databaseName) {
+		string dataSource = dbConfig.Hostname.Contains("\\") || dbConfig.Port == 0
+			? dbConfig.Hostname
+			: $"{dbConfig.Hostname},{dbConfig.Port}";
+
+		if (dbConfig.UseWindowsAuth) {
+			return
+				$"Data Source={dataSource};Initial Catalog={databaseName};Integrated Security=true;MultipleActiveResultSets=true;Pooling=true;Max Pool Size=100";
+		}
+
+		return
+			$"Data Source={dataSource};Initial Catalog={databaseName};User Id={dbConfig.Username}; Password={dbConfig.Password};MultipleActiveResultSets=true;Pooling=true;Max Pool Size=100";
+	}
+
+	private void CopyFileWithProgress(string sourcePath, string destinationPath, IProgress<double> progress) {
+		const int bufferSize = 1024 * 1024; // 1MB
+		byte[] buffer = new byte[bufferSize];
+		int bytesRead;
+
+		using FileSystemStream sourceStream = _fileSystem.FileOpenStream(sourcePath, FileMode.Open, FileAccess.Read,
+			FileShare.Read);
+		long totalBytes = sourceStream.Length;
+
+		using FileSystemStream destinationStream = _fileSystem.FileOpenStream(destinationPath, FileMode.OpenOrCreate,
+			FileAccess.Write, FileShare.None);
+		while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
+			destinationStream.Write(buffer, 0, bytesRead);
+			double percentage = 100d * sourceStream.Position / totalBytes;
+			progress.Report(percentage);
+		}
+	}
+
 	private string CopyLocalWhenNetworkDrive(string path) {
 		if (path.StartsWith(@"\\")) {
 			return CopyZipLocal(path);
@@ -171,31 +243,30 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			return path;
 		}
 
-
 		if (path.StartsWith(".\\")) {
-			path = Path.GetFullPath(path);
+			path = _msFileSystem.Path.GetFullPath(path);
 		}
 
-		return new DriveInfo(Path.GetPathRoot(path)) switch {
+		return _msFileSystem.DriveInfo.New(_msFileSystem.Path.GetPathRoot(path)) switch {
 				   { DriveType: DriveType.Network } => CopyZipLocal(path),
 				   var _ => path
 			   };
 	}
 
 	private string CopyZipLocal(string src) {
-		if (!Directory.Exists(ProductFolder)) {
-			Directory.CreateDirectory(ProductFolder);
+		if (!_msFileSystem.Directory.Exists(_productFolder)) {
+			_msFileSystem.Directory.CreateDirectory(_productFolder);
 		}
 
-		FileInfo srcInfo = new(src);
-		string dest = Path.Join(ProductFolder, srcInfo.Name);
+		IFileInfo srcInfo = _msFileSystem.FileInfo.New(src);
+		string dest = _msFileSystem.Path.Join(_productFolder, srcInfo.Name);
 
-		if (File.Exists(dest)) {
+		if (_msFileSystem.File.Exists(dest)) {
 			return dest;
 		}
 
-		_logger.WriteLine($"Detected network drive as source, copying to local folder {ProductFolder}");
-		Console.Write("Copy Progress:    ");
+		_logger.WriteLine($"Detected network drive as source, copying to local folder {_productFolder}");
+		_logger.Write("Copy Progress:    ");
 		Progress<double> progressReporter = new(progress => {
 			string result = progress switch {
 								< 10 => progress.ToString("0").PadLeft(2) + " %",
@@ -204,39 +275,40 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 								var _ => ""
 							};
 			Console.CursorLeft = 15;
-			Console.Write(result);
+			_logger.Write(result);
 		});
 		CopyFileWithProgress(src, dest, progressReporter);
 		return dest;
 	}
 
-	private async Task<int> CreateIISSite(DirectoryInfo unzippedDirectory, PfInstallerOptions options) {
-		_logger.WriteInfo("[Create IIS Site] - Started");
-		CreateIISSiteRequest request = new() {
-			Arguments = new Dictionary<string, string> {
-				{ "siteName", options.SiteName },
-				{ "port", options.SitePort.ToString() },
-				{ "sourceDirectory", unzippedDirectory.FullName },
-				{ "destinationDirectory", _iisRootFolder }, {
-					"isNetFramework",
-					(InstallerHelper.DetectFramework(unzippedDirectory) == InstallerHelper.FrameworkType.NetFramework)
-					.ToString()
-				}
-			}
-		};
-		return (await _mediator.Send(request)).Value switch {
-				   HandlerError error => ExitWithErrorMessage(error.ErrorDescription),
-				   CreateIISSiteResponse {
-					   Status: BaseHandlerResponse.CompletionStatus.Success
-				   } result => ExitWithOkMessage(
-					   result.Description),
-				   CreateIISSiteResponse { Status: BaseHandlerResponse.CompletionStatus.Failure } result =>
-					   ExitWithErrorMessage(result.Description),
-				   var _ => ExitWithErrorMessage("Unknown error occured")
-			   };
-	}
+	// private async Task<int> CreateIISSite(string unzippedDirectoryPath, PfInstallerOptions options) {
+	// 	_logger.WriteInfo("[Create IIS Site] - Started");
+	// 	CreateIISSiteRequest request = new() {
+	// 		Arguments = new Dictionary<string, string> {
+	// 			{ "siteName", options.SiteName },
+	// 			{ "port", options.SitePort.ToString() },
+	// 			{ "sourceDirectory", unzippedDirectoryPath },
+	// 			{ "destinationDirectory", _iisRootFolder }, {
+	// 				"isNetFramework",
+	// 				(InstallerHelper.DetectFrameworkByPath(unzippedDirectoryPath) ==
+	// 				 InstallerHelper.FrameworkType.NetFramework)
+	// 				.ToString()
+	// 			}
+	// 		}
+	// 	};
+	// 	return (await _mediator.Send(request)).Value switch {
+	// 			   HandlerError error => ExitWithErrorMessage(error.ErrorDescription),
+	// 			   CreateIISSiteResponse {
+	// 				   Status: BaseHandlerResponse.CompletionStatus.Success
+	// 			   } result => ExitWithOkMessage(
+	// 				   result.Description),
+	// 			   CreateIISSiteResponse { Status: BaseHandlerResponse.CompletionStatus.Failure } result =>
+	// 				   ExitWithErrorMessage(result.Description),
+	// 			   var _ => ExitWithErrorMessage("Unknown error occured")
+	// 		   };
+	// }
 
-	private void CreatePgTemplate(DirectoryInfo unzippedDirectory, string tmpDbName, string sourceFileName) {
+	private void CreatePgTemplate(string unzippedDirectoryPath, string tmpDbName, string sourceFileName) {
 		k8Commands.ConnectionStringParams csp = _k8.GetPostgresConnectionString();
 		Postgres postgres = new(csp.DbPort, csp.DbUsername, csp.DbPassword);
 
@@ -246,27 +318,31 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			return;
 		}
 
-		// Search for backup file in db directory or root
-		FileInfo src = unzippedDirectory.GetDirectories("db").FirstOrDefault()?.GetFiles("*.backup").FirstOrDefault();
-		if (src is null) {
-			src = unzippedDirectory?.GetFiles("*.backup").FirstOrDefault();
+		// Search for a backup file in the db directory or root
+		string dbDirectoryPath = _fileSystem.GetDirectories(unzippedDirectoryPath, "db", SearchOption.TopDirectoryOnly)
+											.FirstOrDefault();
+		string src = !string.IsNullOrEmpty(dbDirectoryPath)
+			? _fileSystem.GetFiles(dbDirectoryPath, "*.backup", SearchOption.TopDirectoryOnly).FirstOrDefault()
+			: null;
+		if (string.IsNullOrEmpty(src)) {
+			src = _fileSystem.GetFiles(unzippedDirectoryPath, "*.backup", SearchOption.TopDirectoryOnly)
+							 .FirstOrDefault();
 		}
 
-		// Log detailed information if backup file not found
-		if (src is null) {
-			_logger.WriteError($"[Database restore failed] - Backup file not found in {unzippedDirectory.FullName}");
+		// Log detailed information if a backup file not found
+		if (string.IsNullOrEmpty(src)) {
+			_logger.WriteError($"[Database restore failed] - Backup file not found in {unzippedDirectoryPath}");
 			_logger.WriteError(
-				$"[Database restore failed] - Directory structure: {string.Join(", ", unzippedDirectory.GetDirectories().Select(d => d.Name))}");
-			FileInfo[] files = unzippedDirectory.GetFiles("*.*", SearchOption.TopDirectoryOnly);
+				$"[Database restore failed] - Directory structure: {string.Join(", ", _fileSystem.GetDirectories(unzippedDirectoryPath).Select(d => _msFileSystem.Path.GetFileName(d)))}");
+			string[] files = _fileSystem.GetFiles(unzippedDirectoryPath, "*.*", SearchOption.TopDirectoryOnly);
 			_logger.WriteError(
-				$"[Database restore failed] - Files in root: {string.Join(", ", files.Take(10).Select(f => f.Name))}");
+				$"[Database restore failed] - Files in root: {string.Join(", ", files.Take(10).Select(_msFileSystem.Path.GetFileName))}");
 
-			// Check if db directory exists and list its contents
-			DirectoryInfo dbDir = unzippedDirectory.GetDirectories("db").FirstOrDefault();
-			if (dbDir != null) {
-				FileInfo[] dbFiles = dbDir.GetFiles("*.*", SearchOption.TopDirectoryOnly);
+			// Check if the db directory exists and list its contents
+			if (!string.IsNullOrEmpty(dbDirectoryPath)) {
+				string[] dbFiles = _fileSystem.GetFiles(dbDirectoryPath, "*.*", SearchOption.TopDirectoryOnly);
 				_logger.WriteError(
-					$"[Database restore failed] - Files in db/: {string.Join(", ", dbFiles.Take(10).Select(f => f.Name))}");
+					$"[Database restore failed] - Files in db/: {string.Join(", ", dbFiles.Take(10).Select(_msFileSystem.Path.GetFileName))}");
 			}
 
 			throw new FileNotFoundException("Backup file not found in the specified directory.");
@@ -274,10 +350,11 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 		_logger.WriteInfo($"[Starting Database restore] - {DateTime.Now:hh:mm:ss}");
 
-		_k8.CopyBackupFileToPod(k8Commands.PodType.Postgres, src.FullName, src.Name);
+		string srcFileName = _msFileSystem.Path.GetFileName(src);
+		_k8.CopyBackupFileToPod(k8Commands.PodType.Postgres, src, srcFileName);
 
 		postgres.CreateDb(tmpDbName);
-		_k8.RestorePgDatabase(src.Name, tmpDbName);
+		_k8.RestorePgDatabase(srcFileName, tmpDbName);
 		postgres.SetDatabaseAsTemplate(tmpDbName);
 
 		// Set metadata comment
@@ -285,15 +362,15 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		postgres.SetDatabaseComment(tmpDbName, metadata);
 		_logger.WriteInfo($"[Template metadata] - {metadata}");
 
-		_k8.DeleteBackupImage(k8Commands.PodType.Postgres, src.Name);
+		_k8.DeleteBackupImage(k8Commands.PodType.Postgres, srcFileName);
 		_logger.WriteInfo($"[Completed Database restore] - {DateTime.Now:hh:mm:ss}");
 	}
 
 
-	private int DeployApplication(DirectoryInfo unzippedDirectory, PfInstallerOptions options) {
+	private int DeployApplication(string unzippedDirectoryPath, PfInstallerOptions options) {
 		try {
 			IDeploymentStrategy strategy = SelectDeploymentStrategy(options);
-			int result = strategy.Deploy(unzippedDirectory, options).GetAwaiter().GetResult();
+			int result = strategy.Deploy(unzippedDirectoryPath, options).GetAwaiter().GetResult();
 
 			if (result == 0) {
 				string url = strategy.GetApplicationUrl(options);
@@ -310,7 +387,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	/// <summary>
 	///     Determines the folder path based on whether deployment is IIS or DotNet.
 	///     For IIS: uses _iisRootFolder + site name
-	///     For DotNet: uses current directory + site name (or AppPath if provided)
+	///     For DotNet: uses the current directory and site name (or AppPath if provided)
 	/// </summary>
 	private string DetermineFolderPath(PfInstallerOptions options) {
 		IDeploymentStrategy strategy = SelectDeploymentStrategy(options);
@@ -328,36 +405,41 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 				throw new InvalidOperationException("IIS root folder must be configured for IIS deployment");
 			}
 
-			return Path.Combine(_iisRootFolder, options.SiteName);
+			return _msFileSystem.Path.Combine(_iisRootFolder, options.SiteName);
 		}
 
-		// DotNet deployment uses current directory or specified AppPath
+		// DotNet deployment uses the current directory or specified AppPath
 		if (!string.IsNullOrEmpty(options.AppPath)) {
 			return options.AppPath;
 		}
 
-		return Path.Combine(Directory.GetCurrentDirectory(), options.SiteName);
+		return _msFileSystem.Path.Combine(_msFileSystem.Directory.GetCurrentDirectory(), options.SiteName);
 	}
 
-	private int DoMsWork(DirectoryInfo unzippedDirectory, string siteName) {
-		FileInfo src = unzippedDirectory.GetDirectories("db").FirstOrDefault()?.GetFiles("*.bak").FirstOrDefault();
+	private int DoMsWork(string unzippedDirectoryPath, string siteName) {
+		string dbDirectoryPath = _fileSystem.GetDirectories(unzippedDirectoryPath, "db", SearchOption.TopDirectoryOnly)
+											.FirstOrDefault();
+		string src = !string.IsNullOrEmpty(dbDirectoryPath)
+			? _fileSystem.GetFiles(dbDirectoryPath, "*.bak", SearchOption.TopDirectoryOnly).FirstOrDefault()
+			: null;
 		_logger.WriteInfo($"[Starting Database restore] - {DateTime.Now:hh:mm:ss}");
 
-		if (src is not { Exists: true }) {
+		if (string.IsNullOrEmpty(src) || !_msFileSystem.File.Exists(src)) {
 			throw new FileNotFoundException("Backup file not found in the specified directory.");
 		}
 
 		bool useFs = false;
-		string dest = Path.Join("\\\\wsl.localhost", "rancher-desktop", "mnt", "clio-infrastructure", "mssql", "data",
+		string dest = _msFileSystem.Path.Join("\\\\wsl.localhost", "rancher-desktop", "mnt", "clio-infrastructure",
+			"mssql", "data",
 			$"{siteName}.bak");
-		if (src.Length < int.MaxValue) {
-			_k8.CopyBackupFileToPod(k8Commands.PodType.Mssql, src.FullName, $"{siteName}.bak");
+		if (_msFileSystem.FileInfo.New(src).Length < int.MaxValue) {
+			_k8.CopyBackupFileToPod(k8Commands.PodType.Mssql, src, $"{siteName}.bak");
 		}
 		else {
 			//This is a hack, we have to fix Cp class to allow large files
 			useFs = true;
 			_logger.WriteWarning($"Copying large file to local directory {dest}");
-			_fileSystem.CopyFile(src.FullName, dest, true);
+			_fileSystem.CopyFile(src, dest, true);
 		}
 
 		k8Commands.ConnectionStringParams csp = _k8.GetMssqlConnectionString();
@@ -436,9 +518,9 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 	private Version GetLatestProductVersion(string latestBranchPath, Version latestVersion, string product,
 		CreatioRuntimePlatform platform) {
-		string dirPath = Path.Combine(latestBranchPath, latestVersion.ToString(),
+		string dirPath = _msFileSystem.Path.Combine(latestBranchPath, latestVersion.ToString(),
 			GetProductDirectoryName(product, platform));
-		if (Directory.Exists(dirPath)) {
+		if (_msFileSystem.Directory.Exists(dirPath)) {
 			return latestVersion;
 		}
 
@@ -493,7 +575,8 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	private int RestoreMssqlToLocalServer(LocalDbServerConfiguration config, string backupPath, string dbName,
 		bool dropIfExists) {
 		try {
-			IMssql mssql = _dbClientFactory.CreateMssql(config.Hostname, config.Port, config.Username, config.Password, config.UseWindowsAuth);
+			IMssql mssql = _dbClientFactory.CreateMssql(config.Hostname, config.Port, config.Username, config.Password,
+				config.UseWindowsAuth);
 
 			if (mssql.CheckDbExists(dbName)) {
 				if (!dropIfExists) {
@@ -511,11 +594,11 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			string dataPath = mssql.GetDataPath();
 			_logger.WriteInfo($"SQL Server data path: {dataPath}");
 
-			string backupFileName = Path.GetFileName(backupPath);
-			string destinationPath = Path.Combine(dataPath, backupFileName);
+			string backupFileName = _msFileSystem.Path.GetFileName(backupPath);
+			string destinationPath = _msFileSystem.Path.Combine(dataPath, backupFileName);
 
 			_logger.WriteInfo("Copying backup file to SQL Server data directory...");
-			_fileSystem.CopyFiles(new[] { backupPath }, dataPath, true);
+			_fileSystem.CopyFiles([backupPath], dataPath, true);
 			_logger.WriteInfo($"Copied backup file \r\n\tfrom: {backupPath} \r\n\tto  : {destinationPath}");
 
 			_logger.WriteInfo("Starting database restore...");
@@ -554,16 +637,16 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 				= _dbClientFactory.CreatePostgres(config.Hostname, config.Port, config.Username, config.Password);
 
 			string sourceFileName = !string.IsNullOrEmpty(zipFilePath)
-				? Directory.Exists(zipFilePath)
-					? new DirectoryInfo(zipFilePath).Name
-					: Path.GetFileNameWithoutExtension(zipFilePath)
-				: Path.GetFileNameWithoutExtension(backupPath);
+				? _msFileSystem.Directory.Exists(zipFilePath)
+					? _msFileSystem.Path.GetFileName(zipFilePath)
+					: _msFileSystem.Path.GetFileNameWithoutExtension(zipFilePath)
+				: _msFileSystem.Path.GetFileNameWithoutExtension(backupPath);
 
-			// Try to find existing template by source file
+			// Try to find the existing template by source file
 			string templateName = postgres.FindTemplateBySourceFile(sourceFileName);
 
 			if (string.IsNullOrEmpty(templateName)) {
-				// No existing template found, create new one with GUID-based name
+				// No existing template found, create a new one with a GUID-based name
 				templateName = $"template_{Guid.NewGuid():N}";
 
 				_logger.WriteInfo($"Template for '{sourceFileName}' does not exist, creating '{templateName}'...");
@@ -578,14 +661,10 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 				_logger.WriteInfo($"Template database {templateName} created successfully");
 				_logger.WriteInfo($"Starting restore from {backupPath}...");
-				if (Program.IsDebugMode) {
-					_logger.WriteInfo(
-						"This may take several minutes depending on database size. Detailed progress will be shown below:");
-				}
-				else {
-					_logger.WriteInfo(
-						"This may take several minutes depending on database size. Run with --debug flag to see detailed progress.");
-				}
+				_logger.WriteInfo(
+					Program.IsDebugMode
+						? "This may take several minutes depending on database size. Detailed progress will be shown below:"
+						: "This may take several minutes depending on database size. Run with --debug flag to see detailed progress.");
 
 				int exitCode = ExecutePgRestoreCommand(pgRestorePath, config, backupPath, templateName);
 
@@ -644,7 +723,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		}
 	}
 
-	private int RestoreToLocalDb(DirectoryInfo unzippedDirectory, string destDbName, string dbServerName,
+	private int RestoreToLocalDb(string unzippedDirectoryPath, string destDbName, string dbServerName,
 		bool dropIfExists, string zipFilePath = null) {
 		_logger.WriteInfo($"[Restoring database to local server] - Server: {dbServerName}, Database: {destDbName}");
 
@@ -660,19 +739,19 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			return 1;
 		}
 
-		// Find backup file
-		FileInfo[] backupFiles = unzippedDirectory.GetFiles("*.backup", SearchOption.AllDirectories)
-												  .Concat(unzippedDirectory.GetFiles("*.bak",
-													  SearchOption.AllDirectories))
-												  .ToArray();
+		// Find a backup file
+		string[] backupFiles = _fileSystem.GetFiles(unzippedDirectoryPath, "*.backup", SearchOption.AllDirectories)
+										  .Concat(_fileSystem.GetFiles(unzippedDirectoryPath, "*.bak",
+											  SearchOption.AllDirectories))
+										  .ToArray();
 
 		if (backupFiles.Length == 0) {
-			_logger.WriteError($"No database backup file found in {unzippedDirectory.FullName}");
+			_logger.WriteError($"No database backup file found in {unzippedDirectoryPath}");
 			_logger.WriteInfo("Expected .backup (PostgreSQL) or .bak (MSSQL) file in db/ folder");
 			return 1;
 		}
 
-		string backupFilePath = backupFiles[0].FullName;
+		string backupFilePath = backupFiles[0];
 		_logger.WriteInfo($"[Found backup file] - {backupFilePath}");
 
 		// Test connection
@@ -714,7 +793,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 		_logger.WriteInfo($"Restoring {detectedType} backup to {config.DbType} server...");
 
-		// Restore based on database type
+		// Restore based on a database type
 		return dbType switch {
 				   "mssql" => RestoreMssqlToLocalServer(config, backupFilePath, destDbName, dropIfExists),
 				   "postgres" or "postgresql" => RestorePostgresToLocalServer(config, backupFilePath, destDbName,
@@ -731,18 +810,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		return strategy;
 	}
 
-	private string BuildMssqlConnectionString(LocalDbServerConfiguration dbConfig, string databaseName) {
-		string dataSource = dbConfig.Hostname.Contains("\\") || dbConfig.Port == 0 
-			? dbConfig.Hostname 
-			: $"{dbConfig.Hostname},{dbConfig.Port}";
-
-		if (dbConfig.UseWindowsAuth) {
-			return $"Data Source={dataSource};Initial Catalog={databaseName};Integrated Security=true;MultipleActiveResultSets=true;Pooling=true;Max Pool Size=100";
-		}
-		return $"Data Source={dataSource};Initial Catalog={databaseName};User Id={dbConfig.Username}; Password={dbConfig.Password};MultipleActiveResultSets=true;Pooling=true;Max Pool Size=100";
-	}
-
-	private async Task<int> UpdateConnectionString(DirectoryInfo unzippedDirectory, PfInstallerOptions options,
+	private async Task<int> UpdateConnectionString(string unzippedDirectoryPath, PfInstallerOptions options,
 		InstallerHelper.DatabaseType dbType) {
 		_logger.WriteInfo("[CheckUpdate connection string] - Started");
 		string dbConnectionString;
@@ -760,13 +828,14 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 					$"Database server configuration '{options.DbServerName}' not found in appsettings.json");
 			}
 
-		// Build connection string based on database type
-		dbConnectionString = dbConfig.DbType?.ToLowerInvariant() switch {
-			"postgres" or "postgresql" => 
-				$"Server={dbConfig.Hostname};Port={dbConfig.Port};Database={options.SiteName};User ID={dbConfig.Username};password={dbConfig.Password};Timeout=500; CommandTimeout=400;MaxPoolSize=1024;",
-			"mssql" => BuildMssqlConnectionString(dbConfig, options.SiteName),
-			var _ => throw new NotSupportedException($"Database type '{dbConfig.DbType}' is not supported")
-		};
+			// Build connection string based on a database type
+			dbConnectionString = dbConfig.DbType?.ToLowerInvariant() switch {
+									 "postgres" or "postgresql" =>
+										 $"Server={dbConfig.Hostname};Port={dbConfig.Port};Database={options.SiteName};User ID={dbConfig.Username};password={dbConfig.Password};Timeout=500; CommandTimeout=400;MaxPoolSize=1024;",
+									 "mssql" => BuildMssqlConnectionString(dbConfig, options.SiteName),
+									 var _ => throw new NotSupportedException(
+										 $"Database type '{dbConfig.DbType}' is not supported")
+								 };
 
 			// For local deployment, use localhost Redis or skip if not available
 			(int dbNumber, string errorMessage) emptyDb = FindEmptyRedisDb();
@@ -774,7 +843,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			if (!string.IsNullOrEmpty(emptyDb.errorMessage)) {
 				_logger.WriteError(emptyDb.errorMessage);
 			}
-			
+
 			redisDb = options.RedisDb >= 0 ? options.RedisDb : emptyDb.dbNumber;
 			redisConnectionString = $"host=localhost;db={redisDb};port=6379";
 			_logger.WriteInfo($"[Redis Configuration] - Using local Redis: database {redisDb}");
@@ -792,7 +861,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 			// Determine Redis database number
 			if (options.RedisDb >= 0) {
-				// User specified Redis database
+				// User specified a Redis database
 				redisDb = options.RedisDb;
 				_logger.WriteInfo($"[Redis Configuration] - Using user-specified database: {redisDb}");
 			}
@@ -801,7 +870,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 				(int dbNumber, string errorMessage) = FindEmptyRedisDb(BindingsModule.k8sDns, csParam.RedisPort);
 
 				if (dbNumber == -1) {
-					// Error finding empty database
+					// Error finding an empty database
 					return ExitWithErrorMessage(errorMessage);
 				}
 
@@ -831,7 +900,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 				{ "dbString", dbConnectionString },
 				{ "redis", redisConnectionString }, {
 					"isNetFramework",
-					(InstallerHelper.DetectFramework(unzippedDirectory) ==
+					(InstallerHelper.DetectFrameworkByPath(unzippedDirectoryPath) ==
 					 InstallerHelper.FrameworkType.NetFramework).ToString()
 				}
 			}
@@ -884,9 +953,10 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	#region Methods: Protected
 
 	internal string GetBuildFilePathFromOptions(string remoteArtifactServerPath, string product,
-		CreatioDBType creatioDBType, CreatioRuntimePlatform platform) {
+		CreatioDBType creatioDbType, CreatioRuntimePlatform platform) {
 		Version latestBranchVersion = GetLatestVersion(remoteArtifactServerPath);
-		string latestBranchesBuildPath = Path.Combine(remoteArtifactServerPath, latestBranchVersion.ToString());
+		string latestBranchesBuildPath
+			= _msFileSystem.Path.Combine(remoteArtifactServerPath, latestBranchVersion.ToString());
 		IDirectoryInfo latestBranchesDireInfo = _fileSystem.GetDirectoryInfo(latestBranchesBuildPath);
 		IOrderedEnumerable<IDirectoryInfo> latestBranchSubdirectories = latestBranchesDireInfo.GetDirectories()
 			.OrderByDescending(dir => dir.CreationTimeUtc);
@@ -901,7 +971,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			revisionDirectories.Add(latestBranchesDireInfo);
 		}
 
-		string productZipFileName = GetProductFileNameWithoutBuildNumber(product, creatioDBType, platform);
+		string productZipFileName = GetProductFileNameWithoutBuildNumber(product, creatioDbType, platform);
 		foreach (IDirectoryInfo searchDir in revisionDirectories) {
 			IOrderedEnumerable<IFileInfo> zipFiles = searchDir.GetFiles("*.zip", SearchOption.AllDirectories).ToList()
 															  .OrderByDescending(product => product.LastWriteTime);
@@ -919,7 +989,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		string[] branches = _fileSystem.GetDirectories(remoteArtifactServerPath);
 		List<Version> version = new();
 		foreach (string branch in branches) {
-			string branchName = branch.Split(Path.DirectorySeparatorChar).Last();
+			string branchName = branch.Split(_msFileSystem.Path.DirectorySeparatorChar).Last();
 			if (Version.TryParse(branchName, out Version ver)) {
 				version.Add(ver);
 			}
@@ -932,46 +1002,53 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 	#region Methods: Public
 
-	public async Task<int> CreateDeployDirectory(PfInstallerOptions options, string deploymentFolder) {
-		DirectoryInfo unzippedDirectory = InstallerHelper.UnzipOrTakeExistingOld(options.ZipFile, _packageArchiver);
-		if (!_fileSystem.ExistsDirectory(deploymentFolder)) {
-			_logger.WriteInfo($"[Creating deployment folder] - {deploymentFolder}");
-			_fileSystem.CreateDirectory(deploymentFolder);
-		}
+	/// <summary>
+	///     Creates a deployment directory and copies deployment files excluding backup/database artifacts.
+	/// </summary>
+	/// <param name="options">Deployment options containing source zip or extracted path.</param>
+	/// <param name="deploymentFolder">Target the directory where deployment files should be copied.</param>
+	/// <returns>A task that resolves to <c>0</c> when directory preparation succeeds.</returns>
+	// 	public async Task<int> CreateDeployDirectory(PfInstallerOptions options, string deploymentFolder) {
+	// 		string unzippedDirectoryPath = InstallerHelper.UnzipOrTakeExistingOldPath(options.ZipFile, _packageArchiver);
+	// 		if (!_fileSystem.ExistsDirectory(deploymentFolder)) {
+	// 			_logger.WriteInfo($"[Creating deployment folder] - {deploymentFolder}");
+	// 			_fileSystem.CreateDirectory(deploymentFolder);
+	// 		}
+	//
+	// 		string str = $"""
+	// 					  [Copy deployment files]
+	// 					      From: {unzippedDirectoryPath} 
+	// 					      To:   {deploymentFolder}
+	// 					  """;
+	// 		_logger.WriteInfo(str);
+	// 		_fileSystem.CopyDirectoryWithFilter(unzippedDirectoryPath, deploymentFolder, true, source => {
+	// 			string[] excludedExtensions = [".bak", ".backup"];
+	// 			string[] excludedDirectories = ["db"];
+	//
+	// 			if (_msFileSystem.Directory.Exists(source)) {
+	// 				return excludedDirectories.Contains(_msFileSystem.Path.GetFileName(source)?.ToLower());
+	// 			}
+	//
+	// 			if (!_msFileSystem.File.Exists(source)) {
+	// 				return excludedExtensions.Contains(_msFileSystem.Path.GetExtension(source)?.ToLower());
+	// 			}
+	//
+	// 			return true;
+	// 		});
+	// 		return 0;
+	// 	}
 
-		string str = $"""
-					  [Copy deployment files]
-					      From: {unzippedDirectory.FullName} 
-					      To:   {deploymentFolder}
-					  """;
-		_logger.WriteInfo(str);
-		_fileSystem.CopyDirectoryWithFilter(unzippedDirectory.FullName, deploymentFolder, true, source => {
-			string[] excludedExtensions = [".bak", ".backup"];
-			string[] excludedDirectories = ["db"];
-
-			if (Directory.Exists(source)) {
-				return excludedDirectories.Contains(new DirectoryInfo(source).Name.ToLower());
-			}
-
-			if (!File.Exists(source)) {
-				return excludedExtensions.Contains(Path.GetExtension(source)?.ToLower());
-			}
-
-			return true;
-		});
-		return 0;
-	}
-
-	public int DoPgWork(DirectoryInfo unzippedDirectory, string destDbName, string templateName = "") {
+	/// <inheritdoc />
+	public int DoPgWork(string unzippedDirectoryPath, string destDbName, string templateName = "") {
 		// Use templateName for metadata if provided, otherwise use directory name
 		string actualSourceName = string.IsNullOrWhiteSpace(templateName)
-			? unzippedDirectory.Name
+			? _msFileSystem.Path.GetFileName(unzippedDirectoryPath)
 			: templateName;
 
 		k8Commands.ConnectionStringParams csp = _k8.GetPostgresConnectionString();
 		Postgres postgres = new(csp.DbPort, csp.DbUsername, csp.DbPassword);
 
-		// Try to find existing template by source file
+		// Try to find the existing template by source file
 		string existingTemplate = postgres.FindTemplateBySourceFile(actualSourceName);
 
 		string tmpDbName;
@@ -981,9 +1058,9 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			tmpDbName = existingTemplate;
 		}
 		else {
-			// Generate new GUID-based name
+			// Generate a new GUID-based name
 			tmpDbName = $"template_{Guid.NewGuid():N}";
-			CreatePgTemplate(unzippedDirectory, tmpDbName, actualSourceName);
+			CreatePgTemplate(unzippedDirectoryPath, tmpDbName, actualSourceName);
 		}
 
 		postgres.CreateDbFromTemplate(tmpDbName, destDbName);
@@ -991,12 +1068,17 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		return 0;
 	}
 
+	/// <summary>
+	///     Executes the deploy-creatio command workflow.
+	/// </summary>
+	/// <param name="options">Parsed deploy-creatio command options.</param>
+	/// <returns><c>0</c> on success; non-zero otherwise.</returns>
 	public override int Execute(PfInstallerOptions options) {
 		if (string.IsNullOrEmpty(options.ZipFile) && !string.IsNullOrEmpty(options.Product)) {
 			options.ZipFile = GetBuildFilePathFromOptions(options.Product, options.DBType, options.RuntimePlatform);
 		}
 
-		if (!File.Exists(options.ZipFile) && !Directory.Exists(options.ZipFile)) {
+		if (!_msFileSystem.File.Exists(options.ZipFile) && !_msFileSystem.Directory.Exists(options.ZipFile)) {
 			_logger.WriteInfo($"Could not find zip file: {options.ZipFile}");
 			return 1;
 		}
@@ -1007,30 +1089,30 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 		// Only use IIS root folder validation for IIS deployments
 		if (isIisDeployment) {
-			if (!Directory.Exists(_iisRootFolder)) {
-				Directory.CreateDirectory(_iisRootFolder);
+			if (!_msFileSystem.Directory.Exists(_iisRootFolder)) {
+				_msFileSystem.Directory.CreateDirectory(_iisRootFolder);
 			}
 		}
 
-		// STEP 1: Get site name from user
+		// STEP 1: Get a site name from a user
 		while (string.IsNullOrEmpty(options.SiteName)) {
-			Console.WriteLine("Please enter site name:");
+			_logger.WriteLine("Please enter site name:");
 			string? input = Console.ReadLine();
 			options.SiteName = input?.Trim() ?? string.Empty;
 
 			if (string.IsNullOrEmpty(options.SiteName)) {
-				Console.WriteLine("Site name cannot be empty");
+				_logger.WriteLine("Site name cannot be empty");
 				continue;
 			}
 
 			// Validate site name against appropriate root folder
 			string rootPath = isIisDeployment
 				? _iisRootFolder
-				: Directory.GetCurrentDirectory();
+				: _msFileSystem.Directory.GetCurrentDirectory();
 
-			if (Directory.Exists(Path.Combine(rootPath, options.SiteName))) {
-				Console.WriteLine(
-					$"Site with name {options.SiteName} already exists in {Path.Combine(rootPath, options.SiteName)}");
+			if (_msFileSystem.Directory.Exists(_msFileSystem.Path.Combine(rootPath, options.SiteName))) {
+				_logger.WriteLine(
+					$"Site with name {options.SiteName} already exists in {_msFileSystem.Path.Combine(rootPath, options.SiteName)}");
 				options.SiteName = string.Empty;
 			}
 		}
@@ -1040,29 +1122,29 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		// DotNet deployments on macOS/Linux use default port or user-specified port
 		if (isIisDeployment) {
 			while (options.SitePort is <= 0 or > 65536) {
-				Console.WriteLine(
+				_logger.WriteLine(
 					$"Please enter site port, Max value - 65535:{Environment.NewLine}(recommended range between 40000 and 40100)");
 				if (int.TryParse(Console.ReadLine(), out int value)) {
 					options.SitePort = value;
 				}
 				else {
-					Console.WriteLine("Site port must be an in value");
+					_logger.WriteLine("Site port must be an in value");
 				}
 			}
 		}
 		else {
-			// For DotNet deployments, check if user wants to use custom port or default
-			Console.WriteLine("Port configuration for DotNet deployment:");
+			// For DotNet deployments, check if the user wants to use a custom port or default
+			_logger.WriteLine("Port configuration for DotNet deployment:");
 
-			// If port was already specified via command line, use it
-			if (options.SitePort > 0 && options.SitePort <= 65535) {
+			// If the port was already specified via command line, use it
+			if (options.SitePort is > 0 and <= 65535) {
 				// Port already set, skip prompting
 			}
 			else {
 				bool portSelected = false;
 
 				while (!portSelected) {
-					Console.WriteLine("Press Enter to use default port 8080, or enter a custom port number:");
+					_logger.WriteLine("Press Enter to use default port 8080, or enter a custom port number:");
 					string portInput = (Console.ReadLine() ?? string.Empty).Trim();
 
 					int selectedPort = 8080; // Default
@@ -1071,26 +1153,26 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 						selectedPort = 8080;
 					}
 					else if (int.TryParse(portInput, out int customPort)) {
-						if (customPort > 0 && customPort <= 65535) {
+						if (customPort is > 0 and <= 65535) {
 							selectedPort = customPort;
 						}
 						else {
-							Console.WriteLine(
+							_logger.WriteLine(
 								"Invalid port number. Port must be between 1 and 65535. Please try again.");
 							continue;
 						}
 					}
 					else {
-						Console.WriteLine("Invalid port input. Please enter a number between 1 and 65535.");
+						_logger.WriteLine("Invalid port input. Please enter a number between 1 and 65535.");
 						continue;
 					}
 
 					// Check port availability for DotNet deployment
 					if (!IsPortAvailable(selectedPort)) {
-						Console.WriteLine($"⚠ WARNING: Port {selectedPort} appears to be in use by another process.");
-						Console.WriteLine("What would you like to do?");
-						Console.WriteLine("1. Select a different port (press 1)");
-						Console.WriteLine("2. Try another port (press Enter or any other key for port selection)");
+						_logger.WriteLine($"⚠ WARNING: Port {selectedPort} appears to be in use by another process.");
+						_logger.WriteLine("What would you like to do?");
+						_logger.WriteLine("1. Select a different port (press 1)");
+						_logger.WriteLine("2. Try another port (press Enter or any other key for port selection)");
 
 						string choice = (Console.ReadLine() ?? string.Empty).ToLower().Trim();
 						if (choice == "1") { }
@@ -1109,7 +1191,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			}
 		}
 
-		// STEP 3: Now output all logging information after user has provided input
+		// STEP 3: Now output all logging information after the user has provided input
 		_logger.WriteLine(); // Blank line for readability
 		_logger.WriteInfo(
 			$"[OS Platform] - {(RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "macOS" : RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "Linux" : "Windows")}");
@@ -1120,7 +1202,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		options.ZipFile = CopyLocalWhenNetworkDrive(options.ZipFile);
 		string deploymentFolder = DetermineFolderPath(options);
 
-		DirectoryInfo unzippedDirectory = InstallerHelper.UnzipOrTakeExistingOld(options.ZipFile, _packageArchiver);
+		string unzippedDirectoryPath = InstallerHelper.UnzipOrTakeExistingOldPath(options.ZipFile, _packageArchiver);
 		if (!_fileSystem.ExistsDirectory(deploymentFolder)) {
 			_logger.WriteInfo($"[Creating deployment folder] - {deploymentFolder}");
 			_fileSystem.CreateDirectory(deploymentFolder);
@@ -1128,17 +1210,17 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 		string str = $"""
 					  [Copy deployment files]
-					      From: {unzippedDirectory.FullName} 
+					      From: {unzippedDirectoryPath} 
 					      To:   {deploymentFolder}
 					  """;
 		_logger.WriteInfo(str);
-		_fileSystem.CopyDirectoryWithFilter(unzippedDirectory.FullName, deploymentFolder, true, source => {
-			if (Directory.Exists(source)) {
-				return _excludedDirectories.Contains(new DirectoryInfo(source).Name.ToLower());
+		_fileSystem.CopyDirectoryWithFilter(unzippedDirectoryPath, deploymentFolder, true, source => {
+			if (_msFileSystem.Directory.Exists(source)) {
+				return _excludedDirectories.Contains(_msFileSystem.Path.GetFileName(source)?.ToLower());
 			}
 
-			if (File.Exists(source)) {
-				return _excludedExtensions.Contains(Path.GetExtension(source)?.ToLower());
+			if (_msFileSystem.File.Exists(source)) {
+				return _excludedExtensions.Contains(_msFileSystem.Path.GetExtension(source)?.ToLower());
 			}
 
 			return true;
@@ -1147,7 +1229,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 		InstallerHelper.DatabaseType dbType;
 		try {
-			dbType = InstallerHelper.DetectDataBase(unzippedDirectory);
+			dbType = InstallerHelper.DetectDataBaseByPath(unzippedDirectoryPath);
 		}
 		catch (Exception ex) {
 			_logger.WriteWarning($"[DetectDataBase] - Could not detect database type: {ex.Message}");
@@ -1157,30 +1239,30 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 		int dbRestoreResult;
 
-		// Check if user specified a local database server
+		// Check if the user specified a local database server
 		if (!string.IsNullOrEmpty(options.DbServerName)) {
 			_logger.WriteInfo($"[Database Restore Mode] - Local server: {options.DbServerName}");
-			dbRestoreResult = RestoreToLocalDb(unzippedDirectory, options.SiteName, options.DbServerName,
+			dbRestoreResult = RestoreToLocalDb(unzippedDirectoryPath, options.SiteName, options.DbServerName,
 				options.DropIfExists, options.ZipFile);
 		}
 		else {
 			_logger.WriteInfo("[Database Restore Mode] - Kubernetes cluster");
 			dbRestoreResult = dbType switch {
-								  InstallerHelper.DatabaseType.MsSql => DoMsWork(unzippedDirectory, options.SiteName),
-								  var _ => DoPgWork(unzippedDirectory, options.SiteName,
-									  Path.GetFileNameWithoutExtension(options.ZipFile))
+								  InstallerHelper.DatabaseType.MsSql => DoMsWork(unzippedDirectoryPath,
+									  options.SiteName),
+								  var _ => DoPgWork(unzippedDirectoryPath, options.SiteName,
+									  _msFileSystem.Path.GetFileNameWithoutExtension(options.ZipFile))
 							  };
 		}
 
-		DirectoryInfo deploymentFolderInfo = new(deploymentFolder);
 		int deploySiteResult = dbRestoreResult switch {
-								   0 => DeployApplication(deploymentFolderInfo, options),
+								   0 => DeployApplication(deploymentFolder, options),
 								   var _ => ExitWithErrorMessage("Database restore failed")
 							   };
 
 
 		int updateConnectionStringResult = deploySiteResult switch {
-											   0 => UpdateConnectionString(deploymentFolderInfo, options, dbType)
+											   0 => UpdateConnectionString(deploymentFolder, options, dbType)
 													.GetAwaiter().GetResult(),
 											   var _ => ExitWithErrorMessage("Failed to deploy application")
 										   };
@@ -1195,11 +1277,12 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			Login = "Supervisor",
 			Password = "Supervisor",
 			Uri = uri,
-			IsNetCore = InstallerHelper.DetectFramework(deploymentFolderInfo) == InstallerHelper.FrameworkType.NetCore,
+			IsNetCore
+				= InstallerHelper.DetectFrameworkByPath(deploymentFolder) == InstallerHelper.FrameworkType.NetCore,
 			EnvironmentPath = deploymentFolder
 		});
 
-		// For DotNet deployments, wait for server to become ready before proceeding
+		// For DotNet deployments, wait for the server to become ready before proceeding
 		if (!isIisDeployment) {
 			_logger.WriteInfo("Waiting for server to become ready...");
 			if (!WaitForServerReady(options.SiteName)) {
@@ -1215,15 +1298,18 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		return 0;
 	}
 
+	/// <inheritdoc />
 	public string GetBuildFilePathFromOptions(string product, CreatioDBType dBType,
 		CreatioRuntimePlatform runtimePlatform) {
-		return GetBuildFilePathFromOptions(RemoteArtefactServerPath, product, dBType, runtimePlatform);
+		return GetBuildFilePathFromOptions(_remoteArtefactServerPath, product, dBType, runtimePlatform);
 	}
 
+	/// <inheritdoc />
 	public int StartWebBrowser(PfInstallerOptions options) {
 		return StartWebBrowser(options, false);
 	}
 
+	/// <inheritdoc />
 	public int StartWebBrowser(PfInstallerOptions options, bool isIisDeployment) {
 		string url = isIisDeployment
 			? $"http://{InstallerHelper.FetFQDN()}:{options.SitePort}"

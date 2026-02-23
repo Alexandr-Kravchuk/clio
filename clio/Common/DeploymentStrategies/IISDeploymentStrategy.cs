@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Clio.Command;
@@ -49,10 +48,10 @@ public class IISDeploymentStrategy : IDeploymentStrategy
 	/// Deploys Creatio application via IIS.
 	/// Creates application pool, website, and HTTP/HTTPS bindings.
 	/// </summary>
-	public async Task<int> Deploy(DirectoryInfo appDirectory, PfInstallerOptions options)
+	public async Task<int> Deploy(string appDirectoryPath, PfInstallerOptions options)
 	{
-		if (appDirectory == null) {
-			throw new ArgumentNullException(nameof(appDirectory));
+		if (string.IsNullOrWhiteSpace(appDirectoryPath)) {
+			throw new ArgumentException("Application directory path is required.", nameof(appDirectoryPath));
 		}
 
 		if (options == null) {
@@ -62,13 +61,13 @@ public class IISDeploymentStrategy : IDeploymentStrategy
 		_logger.WriteInfo("[Create IIS Site] - Started");
 
 		try {
-			InstallerHelper.FrameworkType frameworkType = InstallerHelper.DetectFramework(appDirectory);
+			InstallerHelper.FrameworkType frameworkType = InstallerHelper.DetectFrameworkByPath(appDirectoryPath);
 			CreateIISSiteRequest request = new() {
 				Arguments = new Dictionary<string, string> {
 					{ "siteName", options.SiteName },
 					{ "port", options.SitePort.ToString() },
-					{ "sourceDirectory", appDirectory.FullName },
-					{ "destinationDirectory", appDirectory.Parent.FullName }, // Will be filled from settings
+					{ "sourceDirectory", appDirectoryPath },
+					{ "destinationDirectory", System.IO.Path.GetDirectoryName(appDirectoryPath) ?? string.Empty }, // Will be filled from settings
 					{ "isNetFramework", (frameworkType == InstallerHelper.FrameworkType.NetFramework).ToString() }
 				}
 			};

@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using Clio.Command.CreatioInstallCommand;
 
@@ -26,10 +25,10 @@ public interface IDeploymentStrategy
 	/// <summary>
 	/// Deploys the Creatio application using this strategy.
 	/// </summary>
-	/// <param name="appDirectory">Directory containing extracted application files</param>
+	/// <param name="appDirectoryPath">Directory path containing extracted application files.</param>
 	/// <param name="options">Deployment options from command line</param>
 	/// <returns>Exit code: 0 on success, non-zero on failure</returns>
-	Task<int> Deploy(DirectoryInfo appDirectory, PfInstallerOptions options);
+	Task<int> Deploy(string appDirectoryPath, PfInstallerOptions options);
 
 	/// <summary>
 	/// Gets the base URL where the deployed application will be accessible.
