@@ -180,3 +180,17 @@ Decision: Updated partial substitute construction in login-retry test to pass IL
 Discovery: Failure was Castle proxy constructor mismatch in Substitute.ForPartsOf<SetFsmConfigCommand>.
 Files: clio.tests/Command/TurnFsmCommand.LoginRetry.Tests.cs
 Impact: TurnFsmCommandLoginRetryTests.Execute_RetriesLogin_AfterRestart passes again.
+
+## 2026-02-23 - Add CLIO003 direct System.IO usage analyzer with test harness
+Context: User requested analyzer enforcement to discourage direct System.IO usage and guide code toward System.IO.Abstractions for testability.
+Decision: Added CLIO003 analyzer that reports direct usage of core System.IO types (File, Directory, Path, FileInfo, DirectoryInfo, DriveInfo, FileStream), excludes test assemblies, and avoids invocation/member-access double-reporting for the same expression; implemented diagnostics-only iteration without code fix.
+Discovery: In-memory analyzer tests must avoid assembly names containing "test" due intentional analyzer exclusion logic; using a neutral default assembly name restores expected coverage.
+Files: Clio.Analyzers/DirectSystemIoUsageAnalyzer.cs, Clio.Analyzers.Tests/Clio.Analyzers.Tests.csproj, Clio.Analyzers.Tests/AnalyzerTestRunner.cs, Clio.Analyzers.Tests/DirectSystemIoUsageAnalyzerTests.cs, clio.slnx, .codex/workspace-diary.md
+Impact: Repository now enforces filesystem abstraction policy via CLIO003 and has a dedicated analyzer test project to prevent regressions.
+
+## 2026-02-23 - Add CLIO001 and CLIO002 analyzer test coverage
+Context: User requested missing tests for DependencyInjectionManualConstructionAnalyzer (CLIO001) and ConsoleOutputAnalyzer (CLIO002).
+Decision: Added dedicated NUnit test suites in Clio.Analyzers.Tests using existing in-memory Roslyn runner; covered positive and negative scenarios including test-assembly exclusions and analyzer-specific exception paths.
+Discovery: CLIO001 behavior can be validated with minimal in-source Microsoft.Extensions.DependencyInjection stubs, avoiding external analyzer-testing harness complexity while exercising semantic registration detection.
+Files: Clio.Analyzers.Tests/ConsoleOutputAnalyzerTests.cs, Clio.Analyzers.Tests/DependencyInjectionManualConstructionAnalyzerTests.cs, .codex/workspace-diary.md
+Impact: Analyzer regressions for CLIO001/CLIO002 are now protected by automated tests alongside existing CLIO003 coverage.
