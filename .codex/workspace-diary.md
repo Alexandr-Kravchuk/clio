@@ -345,3 +345,10 @@ Discovery: DeployInfrastructureCommand and related tests required constructor wi
 Files: clio/Common/InfrastructurePathProvider.cs, clio/Command/CreateInfrastructure.cs, clio/Command/OpenInfrastructureCommand.cs, clio/Command/DeployInfrastructureCommand.cs, clio.tests/Common/InfrastructurePathProviderTests.cs, clio.tests/Command/CreateInfrastructureCommand.Tests.cs, clio.tests/Command/DeployInfrastructureCommandTests.cs, .codex/workspace-diary.md
 Impact: InfrastructurePathProvider now uses cross-platform Path.Join through abstraction and no longer emits CLIO003 for this file, with DI/test graph kept compilable.
 
+
+## 2026-02-23 - Performance audit hotspots in clio runtime paths
+Context: User requested a targeted performance review focused on CPU/memory hotspots, allocation pressure, I/O latency, async contention, and benchmark coverage.
+Decision: Performed static hotspot analysis across command/runtime paths and prioritized issues by runtime risk (busy waits, sync-over-async blocking, unbounded parallelism, and high-allocation full-materialization patterns).
+Discovery: High-impact risks are concentrated in SafeDeleteDirectory busy-wait loop, deploy/install retry loops using Thread.Sleep, sync-over-async call chains in updater/NuGet/K8/IIS paths, and unbounded Parallel.ForEach in downloader; no benchmark harness references were found.
+Files: clio/Common/FileSystem.cs, clio/Command/DeployInfrastructureCommand.cs, clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/AppUpdater.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio/WebApplication/Downloader.cs, clio/ComposableApplication/ComposableApplicationManager.cs, clio/Common/K8/k8Commands.cs, clio/Common/IIS/WindowsIISAppPoolManager.cs, .codex/workspace-diary.md
+Impact: Future optimization work can start from ranked hotspots with concrete remediation paths and benchmark-gap visibility.

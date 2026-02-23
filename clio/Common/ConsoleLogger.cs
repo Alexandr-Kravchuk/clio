@@ -36,11 +36,7 @@ public class ConsoleLogger : ILogger, IDisposable
 
 	#region Properties: Private
 
-	private bool AddTimeStampToOutput {
-		get {
-			return Program.AddTimeStampToOutput;
-		}
-	}
+	private static bool AddTimeStampToOutput => Program.AddTimeStampToOutput;
 
 	private CancellationToken CancellationToken { get; set; }
 
@@ -57,24 +53,25 @@ public class ConsoleLogger : ILogger, IDisposable
 	#region Methods: Private
 	
 	private void FlushQueue() {
-		while (_logQueue.TryPeek( out var _)) {
+		while (_logQueue.TryPeek( out LogMessage _)) {
 			bool isItem = _logQueue.TryDequeue(out LogMessage item);
-			if (isItem) {
-				Action action = item switch {
-					InfoMessage infoMessage => () => WriteInfoInternal(infoMessage.Value.ToString()),
-					ErrorMessage errorMessage => () => WriteErrorInternal(errorMessage.Value.ToString()),
-					WarningMessage warningMessage => () => WriteWarningInternal(warningMessage.Value.ToString()),
-					UndecoratedMessage noneMessage => () => WriteLineInternal(noneMessage.Value.ToString()),
-					TableMessage tableMessage => () => PrintTableInternal(tableMessage.Value),
-					DebugMessage debugMessage => () => PrintDebugInternal(debugMessage.Value.ToString()),
-					_ => throw new ArgumentOutOfRangeException()
-				};
-				action.Invoke();
+			if (!isItem) {
+				continue;
 			}
+
+			Action action = item switch {
+								InfoMessage infoMessage => () => WriteInfoInternal(infoMessage.Value.ToString()),
+								ErrorMessage errorMessage => () => WriteErrorInternal(errorMessage.Value.ToString()),
+								WarningMessage warningMessage => () => WriteWarningInternal(warningMessage.Value.ToString()),
+								UndecoratedMessage noneMessage => () => WriteLineInternal(noneMessage.Value.ToString()),
+								TableMessage tableMessage => () => PrintTableInternal(tableMessage.Value),
+								DebugMessage debugMessage => () => PrintDebugInternal(debugMessage.Value.ToString()),
+								var _ => throw new ArgumentOutOfRangeException()
+							};
+			action.Invoke();
 		}
 	}
-	
-	
+
 	private void PrintInternal(){
 		while (!CancellationToken.IsCancellationRequested) {
 			FlushQueue();
@@ -93,9 +90,10 @@ public class ConsoleLogger : ILogger, IDisposable
 	private void WriteErrorInternal(string value){
 		Console.ForegroundColor = ConsoleColor.Red;
 		string linePrefix = GetLinePrefix("[ERR]");
-		Console.Write(linePrefix);
+		Console.Error.Write(linePrefix);
 		Console.ForegroundColor = _defaultConsoleColor;
-		Console.WriteLine(value);
+		Console.Error.WriteLine(value);
+		//Console.WriteLine(value);
 		_logFileWriter?.WriteLine($"{linePrefix}{value}");
 	}
 
@@ -106,9 +104,9 @@ public class ConsoleLogger : ILogger, IDisposable
 	private void WriteInfoInternal(string value){
 		string linePrefix = GetLinePrefix("[INF]");
 		Console.ForegroundColor = ConsoleColor.Green;
-		Console.Write(linePrefix);
+		Console.Out.Write(linePrefix);
 		Console.ForegroundColor = _defaultConsoleColor;
-		Console.WriteLine(value);
+		Console.Out.WriteLine(value);
 		_logFileWriter?.WriteLine($"{linePrefix}{value}");
 		_creatioLogStreamer?.WriteLine($"{linePrefix}{value}");
 	}
@@ -116,15 +114,15 @@ public class ConsoleLogger : ILogger, IDisposable
 	private void PrintDebugInternal(string value){
 		string linePrefix = GetLinePrefix("[DBG]");
 		Console.ForegroundColor = ConsoleColor.DarkYellow;
-		Console.Write(linePrefix);
+		Console.Out.Write(linePrefix);
 		Console.ForegroundColor = _defaultConsoleColor;
-		Console.WriteLine(value);
+		Console.Out.WriteLine(value);
 		_logFileWriter?.WriteLine($"{linePrefix}{value}");
 		_creatioLogStreamer?.WriteLine($"{linePrefix}{value}");
 	}
 
 	private void WriteLineInternal(string value){
-		Console.WriteLine(value);
+		Console.Out.WriteLine(value);
 		string linePrefix = GetLinePrefix();
 		_logFileWriter?.WriteLine($"{linePrefix}{value}");
 		_creatioLogStreamer?.WriteLine($"{linePrefix}{value}");
@@ -133,9 +131,9 @@ public class ConsoleLogger : ILogger, IDisposable
 	private void WriteWarningInternal(string value){
 		Console.ForegroundColor = ConsoleColor.DarkYellow;
 		string linePrefix = GetLinePrefix("[WAR]");
-		Console.Write(linePrefix);
+		Console.Out.Write(linePrefix);
 		Console.ForegroundColor = _defaultConsoleColor;
-		Console.WriteLine(value);
+		Console.Out.WriteLine(value);
 		_logFileWriter?.WriteLine($"{linePrefix}{value}");
 		_creatioLogStreamer?.WriteLine($"{linePrefix}{value}");
 	}
@@ -311,10 +309,21 @@ public class ConsoleLogger : ILogger, IDisposable
 	public static readonly Func<object, string> WrapYellow = s => $"\e[33m{s}\e[0m";
 	public static readonly Func<object, string> WrapBlue = s => $"\e[34m{s}\e[0m";
 	public static readonly Func<object, string> WrapGreen = s => $"\e[32m{s}\e[0m";
+	public static readonly Func<object, string> WrapDarkYellow = s => $"\e[93m{s}\e[0m";
+	public static readonly Func<object, string> WhapCayenne = s => $"\e[91m{s}\e[0m";
+	
 	public static readonly Func<object, string> WrapBold = s => $"\e[1m{s}\e[0m";
 	public static readonly Func<object, string> WrapUnderline = s => $"\e[4m{s}\e[0m";
 	public static readonly Func<object, string> WrapItalic = s => $"\e[3m{s}\e[0m";
 	public static readonly Func<object, string> WrapStrikeThrough = s => $"\e[9m{s}\e[0m";
+	
+	
+	private static bool SupportsAnsiEscapeCodes() =>
+
+		// Rider terminal doesn't set TERM properly
+		!Console.IsOutputRedirected &&
+		Environment.GetEnvironmentVariable("NO_COLOR") == null &&
+		Environment.GetEnvironmentVariable("TERM") != null;
 }
 
 #endregion

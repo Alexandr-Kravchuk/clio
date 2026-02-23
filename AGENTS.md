@@ -97,7 +97,6 @@ Treat custom `CLIO*` diagnostics as actionable and rely on `clio/.editorconfig` 
 - Favor DI resolution and constructor injection over manual construction.
 - Using `new`/`new()` for behavior classes should be a last resort, not normal practice.
 
-
 # Workspace diary
 
 Keep a persistent engineering diary to speed up future tasks.
@@ -122,3 +121,12 @@ Discovery: <important behavior/constraint learned>
 Files: <path1>, <path2>
 Impact: <how this helps future tasks>
 ```
+
+
+
+# Code review
+
+Use multiple agents in parallel to review code for
+- code quality and maintainability
+- performance and correctness
+- security and best practices
