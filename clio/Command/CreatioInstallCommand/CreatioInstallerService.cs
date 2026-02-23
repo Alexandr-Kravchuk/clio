@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -95,6 +94,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	private readonly MsFileSystem _msFileSystem;
 	private readonly IPackageArchiver _packageArchiver;
 	private readonly IPostgresToolsPathDetector _postgresToolsPathDetector;
+	private readonly IProcessExecutor _processExecutor;
 
 	private readonly string _productFolder;
 	private readonly RegAppCommand _registerCommand;
@@ -122,13 +122,14 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 	/// <param name="dbConnectionTester">Service for validating DB connectivity before restore.</param>
 	/// <param name="backupFileDetector">Service for detecting a backup file type.</param>
 	/// <param name="postgresToolsPathDetector">Detector for PostgreSQL tools installation paths.</param>
+	/// <param name="processExecutor">Process execution service used for external tool invocation.</param>
 	public CreatioInstallerService(IPackageArchiver packageArchiver, k8Commands k8,
 		IMediator mediator, RegAppCommand registerCommand, ISettingsRepository settingsRepository,
 		IFileSystem fileSystem, MsFileSystem msFileSystem, ILogger logger,
 		DeploymentStrategyFactory deploymentStrategyFactory,
 		HealthCheckCommand healthCheckCommand, IDbClientFactory dbClientFactory,
 		IDbConnectionTester dbConnectionTester, IBackupFileDetector backupFileDetector,
-		IPostgresToolsPathDetector postgresToolsPathDetector) {
+		IPostgresToolsPathDetector postgresToolsPathDetector, IProcessExecutor processExecutor) {
 		_packageArchiver = packageArchiver;
 		_k8 = k8;
 		_mediator = mediator;
@@ -146,6 +147,7 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 		_dbConnectionTester = dbConnectionTester;
 		_backupFileDetector = backupFileDetector;
 		_postgresToolsPathDetector = postgresToolsPathDetector;
+		_processExecutor = processExecutor;
 	}
 
 	/// <summary>
@@ -462,48 +464,48 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 
 	private int ExecutePgRestoreCommand(string pgRestorePath, LocalDbServerConfiguration config, string backupPath,
 		string dbName) {
-		ProcessStartInfo processInfo = new() {
-			FileName = pgRestorePath,
-			Arguments
-				= $"-h {config.Hostname} -p {config.Port} -U {config.Username} -d {dbName} -v \"{backupPath}\" --no-owner --no-privileges",
-			UseShellExecute = false,
-			RedirectStandardOutput = true,
-			RedirectStandardError = true,
-			CreateNoWindow = true,
-			Environment = {
+		ProcessExecutionOptions executionOptions = new(pgRestorePath,
+			$"-h {config.Hostname} -p {config.Port} -U {config.Username} -d {dbName} -v \"{backupPath}\" --no-owner --no-privileges") {
+			WorkingDirectory = _msFileSystem.Path.GetDirectoryName(pgRestorePath),
+			EnvironmentVariables = new Dictionary<string, string> {
 				["PGPASSWORD"] = config.Password
-			}
+			},
+			OnOutput = Program.IsDebugMode
+				? (line, _) => _logger.WriteDebug(line)
+				: null
 		};
 
-		using Process process = Process.Start(processInfo);
-
-		if (Program.IsDebugMode) {
-			process.OutputDataReceived += (sender, e) => {
-				if (!string.IsNullOrEmpty(e.Data)) {
-					_logger.WriteDebug(e.Data);
-				}
-			};
-
-			process.ErrorDataReceived += (sender, e) => {
-				if (!string.IsNullOrEmpty(e.Data)) {
-					_logger.WriteDebug(e.Data);
-				}
-			};
-		}
-		else {
-			Task.Run(() => {
-				while (!process.HasExited) {
+		CancellationTokenSource progressCancellationTokenSource = new();
+		Task progressTask = Task.CompletedTask;
+		if (!Program.IsDebugMode) {
+			progressTask = Task.Run(async () => {
+				while (!progressCancellationTokenSource.Token.IsCancellationRequested) {
 					_logger.WriteInfo("Restore in progress...");
-					Thread.Sleep(30000);
+					try {
+						await Task.Delay(30000, progressCancellationTokenSource.Token);
+					}
+					catch (OperationCanceledException) {
+						break;
+					}
 				}
 			});
 		}
 
-		process.BeginOutputReadLine();
-		process.BeginErrorReadLine();
-		process.WaitForExit();
+		ProcessExecutionResult executionResult;
+		try {
+			executionResult = _processExecutor.ExecuteWithRealtimeOutputAsync(executionOptions).GetAwaiter().GetResult();
+		}
+		finally {
+			progressCancellationTokenSource.Cancel();
+			progressTask.GetAwaiter().GetResult();
+		}
 
-		return process.ExitCode;
+		if (!executionResult.Started) {
+			_logger.WriteError($"pg_restore failed to start: {executionResult.StandardError}");
+			return 1;
+		}
+
+		return executionResult.ExitCode ?? 1;
 	}
 
 	private int ExitWithErrorMessage(string message) {
@@ -1316,20 +1318,31 @@ public class CreatioInstallerService : Command<PfInstallerOptions>, ICreatioInst
 			: $"http://localhost:{options.SitePort}";
 
 		try {
+			string program;
+			string arguments;
+
 			// Windows
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-				Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
+				program = "cmd";
+				arguments = $"/c start {url}";
 			}
 
 			//Linux
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
-				Process.Start("xdg-open", url);
+				program = "xdg-open";
+				arguments = url;
 			}
 
 			// macOS
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-				Process.Start("open", url);
+				program = "open";
+				arguments = url;
 			}
+			else {
+				return 0;
+			}
+
+			_processExecutor.Execute(program, arguments, false);
 		}
 		catch (Exception ex) {
 			_logger.WriteError($"Failed to launch web browser: {ex.Message}");

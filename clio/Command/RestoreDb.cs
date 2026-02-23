@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -49,15 +49,28 @@ public class RestoreDbCommand : Command<RestoreDbCommandOptions>
 	private readonly IDbConnectionTester _dbConnectionTester;
 	private readonly IBackupFileDetector _backupFileDetector;
 	private readonly IPostgresToolsPathDetector _postgresToolsPathDetector;
+	private readonly IProcessExecutor _processExecutor;
 
 	#endregion
 
 	#region Constructors: Public
 
+	/// <summary>
+	/// Initializes a new instance of the <see cref="RestoreDbCommand"/> class.
+	/// </summary>
+	/// <param name="logger">Logger used for command output.</param>
+	/// <param name="fileSystem">Filesystem abstraction.</param>
+	/// <param name="dbClientFactory">Factory for database clients.</param>
+	/// <param name="settingsRepository">Repository for environment and DB server settings.</param>
+	/// <param name="creatioInstallerService">Installer service used for Kubernetes/postgres restore flows.</param>
+	/// <param name="dbConnectionTester">Service that validates local database connectivity before restore.</param>
+	/// <param name="backupFileDetector">Service that detects backup file type.</param>
+	/// <param name="postgresToolsPathDetector">Service that resolves <c>pg_restore</c> path.</param>
+	/// <param name="processExecutor">Process execution abstraction used to run <c>pg_restore</c>.</param>
 	public RestoreDbCommand(ILogger logger, IFileSystem fileSystem, IDbClientFactory dbClientFactory, 
 		ISettingsRepository settingsRepository, ICreatioInstallerService creatioInstallerService,
 		IDbConnectionTester dbConnectionTester, IBackupFileDetector backupFileDetector,
-		IPostgresToolsPathDetector postgresToolsPathDetector) {
+		IPostgresToolsPathDetector postgresToolsPathDetector, IProcessExecutor processExecutor) {
 		_logger = logger;
 		_fileSystem = fileSystem;
 		_dbClientFactory = dbClientFactory;
@@ -66,6 +79,7 @@ public class RestoreDbCommand : Command<RestoreDbCommandOptions>
 		_dbConnectionTester = dbConnectionTester;
 		_backupFileDetector = backupFileDetector;
 		_postgresToolsPathDetector = postgresToolsPathDetector;
+		_processExecutor = processExecutor;
 	}
 
 	#endregion
@@ -375,53 +389,33 @@ public class RestoreDbCommand : Command<RestoreDbCommandOptions>
 	}
 
 	private int ExecutePgRestoreCommand(string pgRestorePath, LocalDbServerConfiguration config, string backupPath, string dbName) {
-		var processInfo = new ProcessStartInfo {
-			FileName = pgRestorePath,
-			Arguments = $"-h {config.Hostname} -p {config.Port} -U {config.Username} -d {dbName} -v \"{backupPath}\" --no-owner --no-privileges",
-			UseShellExecute = false,
-			RedirectStandardOutput = true,
-			RedirectStandardError = true,
-			CreateNoWindow = true, 
-			Environment = {
+		string arguments = $"-h {config.Hostname} -p {config.Port} -U {config.Username} -d {dbName} -v \"{backupPath}\" --no-owner --no-privileges";
+		DateTime lastProgressMessage = DateTime.Now;
+		ProcessExecutionOptions executionOptions = new(pgRestorePath, arguments) {
+			EnvironmentVariables = new Dictionary<string, string> {
 				["PGPASSWORD"] = config.Password
+			},
+			OnOutput = (line, stream) => {
+				if (string.IsNullOrEmpty(line)) {
+					return;
+				}
+
+				if (Program.IsDebugMode) {
+					_logger.WriteDebug(line);
+					return;
+				}
+
+				if (stream == ProcessOutputStream.StdOut &&
+					(DateTime.Now - lastProgressMessage).TotalSeconds >= 30) {
+					_logger.WriteInfo("Restore in progress...");
+					lastProgressMessage = DateTime.Now;
+				}
 			}
 		};
-
-		using Process process = Process.Start(processInfo);
-
-		if (Program.IsDebugMode) {
-			process.OutputDataReceived += (sender, e) => {
-				if (!string.IsNullOrEmpty(e.Data)) {
-					_logger.WriteDebug(e.Data);
-				}
-			};
-
-			process.ErrorDataReceived += (sender, e) => {
-				if (!string.IsNullOrEmpty(e.Data)) {
-					_logger.WriteDebug(e.Data);
-				}
-			};
-		} else {
-			System.DateTime lastProgressMessage = System.DateTime.Now;
-			process.OutputDataReceived += (sender, e) => {
-				if (!string.IsNullOrEmpty(e.Data)) {
-					if ((System.DateTime.Now - lastProgressMessage).TotalSeconds >= 30) {
-						_logger.WriteInfo("Restore in progress...");
-						lastProgressMessage = System.DateTime.Now;
-					}
-				}
-			};
-
-			process.ErrorDataReceived += (sender, e) => {
-				// Consume error stream silently to prevent blocking
-			};
-		}
-		
-		process.BeginOutputReadLine();
-		process.BeginErrorReadLine();
-		process.WaitForExit();
-
-		return process.ExitCode;
+		ProcessExecutionResult result = _processExecutor.ExecuteWithRealtimeOutputAsync(executionOptions)
+			.GetAwaiter()
+			.GetResult();
+		return result.Started ? result.ExitCode ?? 1 : 1;
 	}
 
 	private int HandleUnsupportedDbType(string dbType) {

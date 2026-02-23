@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Immutable;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -23,6 +24,9 @@ public sealed class ConsoleOutputAnalyzer : DiagnosticAnalyzer {
 	private static readonly ImmutableHashSet<string> ConsoleOutputMethods = ImmutableHashSet.Create(
 		"Write",
 		"WriteLine");
+	private static readonly ImmutableHashSet<string> ConsoleOutputProperties = ImmutableHashSet.Create(
+		"Out",
+		"OutputEncoding");
 
 	#region Properties: Public
 
@@ -33,6 +37,35 @@ public sealed class ConsoleOutputAnalyzer : DiagnosticAnalyzer {
 
 	#region Methods: Private
 
+	private static void AnalyzeMemberAccess(SyntaxNodeAnalysisContext context) {
+		MemberAccessExpressionSyntax memberAccess = (MemberAccessExpressionSyntax)context.Node;
+		if (memberAccess.Parent is MemberAccessExpressionSyntax parentMemberAccess
+			&& parentMemberAccess.Expression == memberAccess
+			&& parentMemberAccess.Parent is InvocationExpressionSyntax invocation
+			&& invocation.Expression == parentMemberAccess) {
+			return;
+		}
+
+		if (context.SemanticModel.GetSymbolInfo(memberAccess, context.CancellationToken).Symbol is not IPropertySymbol propertySymbol) {
+			return;
+		}
+
+		if (!ConsoleOutputProperties.Contains(propertySymbol.Name)) {
+			return;
+		}
+
+		if (!IsConsoleType(propertySymbol.ContainingType)) {
+			return;
+		}
+
+		if (IsClioConsoleLogger(context)) {
+			return;
+		}
+
+		Diagnostic diagnostic = Diagnostic.Create(Rule, memberAccess.GetLocation(), propertySymbol.Name);
+		context.ReportDiagnostic(diagnostic);
+	}
+
 	private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context) {
 		InvocationExpressionSyntax invocation = (InvocationExpressionSyntax)context.Node;
 		if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken)
@@ -40,23 +73,44 @@ public sealed class ConsoleOutputAnalyzer : DiagnosticAnalyzer {
 			return;
 		}
 
-		if (!ConsoleOutputMethods.Contains(methodSymbol.Name)) {
+		if (IsClioConsoleLogger(context)) {
 			return;
 		}
 
 		INamedTypeSymbol containingType = methodSymbol.ContainingType;
-		if (containingType is null || containingType.ToDisplayString() != "System.Console") {
+		if (IsConsoleType(containingType) && ConsoleOutputMethods.Contains(methodSymbol.Name)) {
+			Diagnostic directConsoleDiagnostic = Diagnostic.Create(Rule, invocation.GetLocation(), methodSymbol.Name);
+			context.ReportDiagnostic(directConsoleDiagnostic);
 			return;
 		}
 
+		if (invocation.Expression is not MemberAccessExpressionSyntax invocationMemberAccess) {
+			return;
+		}
+
+		if (context.SemanticModel.GetSymbolInfo(invocationMemberAccess.Expression, context.CancellationToken).Symbol is not IPropertySymbol propertySymbol) {
+			return;
+		}
+
+		if (!ConsoleOutputProperties.Contains(propertySymbol.Name) || !IsConsoleType(propertySymbol.ContainingType)) {
+			return;
+		}
+
+		Diagnostic consoleOutDiagnostic = Diagnostic.Create(
+			Rule,
+			invocation.GetLocation(),
+			$"{propertySymbol.Name}.{methodSymbol.Name}");
+		context.ReportDiagnostic(consoleOutDiagnostic);
+	}
+
+	private static bool IsClioConsoleLogger(SyntaxNodeAnalysisContext context) {
 		INamedTypeSymbol? containingClass = context.ContainingSymbol?.ContainingType;
-		if (containingClass?.Name == "ConsoleLogger"
-			&& containingClass.ContainingNamespace.ToDisplayString().StartsWith("Clio", StringComparison.Ordinal)) {
-			return;
-		}
+		return containingClass?.Name == "ConsoleLogger"
+			&& containingClass.ContainingNamespace.ToDisplayString().StartsWith("Clio", StringComparison.Ordinal);
+	}
 
-		Diagnostic diagnostic = Diagnostic.Create(Rule, invocation.GetLocation(), methodSymbol.Name);
-		context.ReportDiagnostic(diagnostic);
+	private static bool IsConsoleType(INamedTypeSymbol typeSymbol) {
+		return typeSymbol is not null && typeSymbol.ToDisplayString() == "System.Console";
 	}
 
 	private static bool IsTestAssembly(Compilation compilation) {
@@ -78,7 +132,8 @@ public sealed class ConsoleOutputAnalyzer : DiagnosticAnalyzer {
 				return;
 			}
 
-			startContext.RegisterSyntaxNodeAction(AnalyzeInvocation, Microsoft.CodeAnalysis.CSharp.SyntaxKind.InvocationExpression);
+			startContext.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
+			startContext.RegisterSyntaxNodeAction(AnalyzeMemberAccess, SyntaxKind.SimpleMemberAccessExpression);
 		});
 	}
 

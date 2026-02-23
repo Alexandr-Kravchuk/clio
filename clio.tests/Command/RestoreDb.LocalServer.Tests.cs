@@ -24,6 +24,7 @@ public class RestoreDbLocalServerTests : BaseCommandTests<RestoreDbCommandOption
 	private IDbConnectionTester _dbConnectionTester;
 	private IBackupFileDetector _backupFileDetector;
 	private IPostgresToolsPathDetector _postgresToolsPathDetector;
+	private IProcessExecutor _processExecutor;
 
 	[SetUp]
 	public override void Setup() {
@@ -36,6 +37,7 @@ public class RestoreDbLocalServerTests : BaseCommandTests<RestoreDbCommandOption
 		_dbConnectionTester = Substitute.For<IDbConnectionTester>();
 		_backupFileDetector = Substitute.For<IBackupFileDetector>();
 		_postgresToolsPathDetector = Substitute.For<IPostgresToolsPathDetector>();
+		_processExecutor = Substitute.For<IProcessExecutor>();
 	}
 
 	[Test]
@@ -642,7 +644,8 @@ public class RestoreDbLocalServerTests : BaseCommandTests<RestoreDbCommandOption
 			_creatioInstallerService,
 			_dbConnectionTester,
 			_backupFileDetector,
-			_postgresToolsPathDetector
+			_postgresToolsPathDetector,
+			_processExecutor
 		);
 	}
 }

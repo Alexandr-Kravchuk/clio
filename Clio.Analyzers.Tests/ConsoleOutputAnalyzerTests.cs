@@ -120,4 +120,74 @@ public sealed class ConsoleOutputAnalyzerTests {
 			.Should()
 			.Be(1, because: "a single offending invocation should produce one diagnostic");
 	}
+
+	[Test]
+	[Description("Reports CLIO002 when Console.Out.WriteAsync is used.")]
+	public async Task RunAnalyzerAsync_WhenSourceUsesConsoleOutWriteAsync_ReturnsClio002Diagnostic() {
+		// Arrange
+		const string source = """
+		                    using System;
+		                    using System.Threading.Tasks;
+		                    public static class Sample {
+		                    	public static async Task PrintAsync() {
+		                    		await Console.Out.WriteAsync("Extracting files: ");
+		                    	}
+		                    }
+		                    """;
+		ConsoleOutputAnalyzer analyzer = new();
+
+		// Act
+		var diagnostics = await AnalyzerTestRunner.RunAnalyzerAsync(source, analyzer);
+
+		// Assert
+		diagnostics.Should().ContainSingle(d => d.Id == "CLIO002",
+			because: "writing through Console.Out should be treated as direct console output");
+	}
+
+	[Test]
+	[Description("Reports CLIO002 when Console.Out is read directly.")]
+	public async Task RunAnalyzerAsync_WhenSourceReadsConsoleOut_ReturnsClio002Diagnostic() {
+		// Arrange
+		const string source = """
+		                    using System;
+		                    using System.IO;
+		                    public static class Sample {
+		                    	public static TextWriter Capture() {
+		                    		TextWriter originalConsoleOut = Console.Out;
+		                    		return originalConsoleOut;
+		                    	}
+		                    }
+		                    """;
+		ConsoleOutputAnalyzer analyzer = new();
+
+		// Act
+		var diagnostics = await AnalyzerTestRunner.RunAnalyzerAsync(source, analyzer);
+
+		// Assert
+		diagnostics.Should().ContainSingle(d => d.Id == "CLIO002",
+			because: "capturing Console.Out bypasses ILogger abstractions");
+	}
+
+	[Test]
+	[Description("Reports CLIO002 when Console.OutputEncoding is assigned.")]
+	public async Task RunAnalyzerAsync_WhenSourceSetsConsoleOutputEncoding_ReturnsClio002Diagnostic() {
+		// Arrange
+		const string source = """
+		                    using System;
+		                    using System.Text;
+		                    public static class Sample {
+		                    	public static void Configure() {
+		                    		Console.OutputEncoding = Encoding.UTF8;
+		                    	}
+		                    }
+		                    """;
+		ConsoleOutputAnalyzer analyzer = new();
+
+		// Act
+		var diagnostics = await AnalyzerTestRunner.RunAnalyzerAsync(source, analyzer);
+
+		// Assert
+		diagnostics.Should().ContainSingle(d => d.Id == "CLIO002",
+			because: "direct Console output configuration should be centralized");
+	}
 }

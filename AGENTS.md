@@ -60,6 +60,7 @@ When adding or changing tests, keep structure and assertions consistent.
 - Use AAA structure explicitly: `Arrange`, `Act`, `Assert`.
 - Every assertion must include a `because` explanation.
 - Every test method must have a `[Description("...")]` attribute.
+- All tests must be executable on macOS, Linux, and Windows; avoid OS-specific commands/paths unless the test explicitly validates OS-specific behavior.
 
 # Instance creation and DI policy
 

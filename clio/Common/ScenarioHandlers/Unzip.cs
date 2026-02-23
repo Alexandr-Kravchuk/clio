@@ -62,7 +62,7 @@ namespace Clio.Common.ScenarioHandlers {
             _ = !Directory.Exists(destinationDirectory) ? null : Directory.CreateDirectory(destinationDirectory);
 
             using var archive = ZipFile.OpenRead(zipFileName);
-            await Console.Out.WriteAsync("Extracting files: ");
+            await Console.Out.WriteAsync("Extracting files: "); 
             foreach (var entry in archive.Entries) {
                 // Skip directories (entries ending with '/')
                 if (!entry.FullName.EndsWith("/")) {

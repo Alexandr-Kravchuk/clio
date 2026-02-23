@@ -2,12 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
 using Clio.Command.CreatioInstallCommand;
+using Clio.Common;
 using Clio.Common.K8;
 using Clio.Tests.Command;
 using FluentAssertions;
 using k8s;
 using NSubstitute;
+using NSubstitute.Core;
 using NUnit.Framework;
 
 namespace Clio.Tests;
@@ -24,6 +27,7 @@ internal class CreatioInstallerServiceTests : BaseClioModuleTests{
 		: "/mnt/tscrm.com/dfs-ts/builds-7";
 
 	private CreatioInstallerService _creatioInstallerService;
+	private IProcessExecutor _processExecutor;
 
 	#endregion
 
@@ -36,6 +40,9 @@ internal class CreatioInstallerServiceTests : BaseClioModuleTests{
 
 		Ik8Commands k8Commands = Substitute.For<Ik8Commands>();
 		containerBuilder.AddSingleton(k8Commands);
+
+		_processExecutor = Substitute.For<IProcessExecutor>();
+		containerBuilder.AddSingleton(_processExecutor);
 	}
 
 	protected override MockFileSystem CreateFs() {
@@ -351,6 +358,76 @@ internal class CreatioInstallerServiceTests : BaseClioModuleTests{
 
 		//Assert
 		actual.Should().Be(Version.Parse("8.1.3"), "because the latest version in the mock file system is 8.1.3.");
+	}
+
+	[Test]
+	[Category("Unit")]
+	[Description("Should launch browser via IProcessExecutor for non-IIS deployment using localhost URL.")]
+	public void StartWebBrowser_UsesProcessExecutor_ForNonIisDeployment() {
+		// Arrange
+		PfInstallerOptions options = new() {
+			SitePort = 8091
+		};
+		string expectedProgram = GetExpectedBrowserProgram();
+
+		// Act
+		int result = _creatioInstallerService.StartWebBrowser(options, false);
+
+		// Assert
+		result.Should().Be(0, "because browser start should succeed when process execution is delegated");
+		int executeCalls = _processExecutor.ReceivedCalls()
+			.Count(call => call.GetMethodInfo().Name == nameof(IProcessExecutor.Execute));
+		executeCalls.Should().Be(1, "because browser launch should invoke the process executor exactly once");
+		ICall executeCall = _processExecutor.ReceivedCalls()
+			.Single(call => call.GetMethodInfo().Name == nameof(IProcessExecutor.Execute));
+		object[] arguments = executeCall.GetArguments();
+		arguments[0].Should().Be(expectedProgram, "because OS-specific browser launcher command should be selected");
+		arguments[1].Should().BeOfType<string>("because process arguments should contain the URL to open");
+		((string)arguments[1]).Should().Contain("localhost:8091", "because non-IIS browser URL should use localhost");
+		arguments[2].Should().Be(false, "because browser launch should be fire-and-forget");
+	}
+
+	[Test]
+	[Category("Unit")]
+	[Description("Should launch browser via IProcessExecutor for IIS deployment using site port in URL.")]
+	public void StartWebBrowser_UsesProcessExecutor_ForIisDeployment() {
+		// Arrange
+		PfInstallerOptions options = new() {
+			SitePort = 8092
+		};
+		string expectedProgram = GetExpectedBrowserProgram();
+
+		// Act
+		int result = _creatioInstallerService.StartWebBrowser(options, true);
+
+		// Assert
+		result.Should().Be(0, "because browser start should succeed when process execution is delegated");
+		int executeCalls = _processExecutor.ReceivedCalls()
+			.Count(call => call.GetMethodInfo().Name == nameof(IProcessExecutor.Execute));
+		executeCalls.Should().Be(1, "because browser launch should invoke the process executor exactly once");
+		ICall executeCall = _processExecutor.ReceivedCalls()
+			.Single(call => call.GetMethodInfo().Name == nameof(IProcessExecutor.Execute));
+		object[] arguments = executeCall.GetArguments();
+		arguments[0].Should().Be(expectedProgram, "because OS-specific browser launcher command should be selected");
+		arguments[1].Should().BeOfType<string>("because process arguments should contain the URL to open");
+		((string)arguments[1]).Should().Contain(":8092", "because IIS browser URL should include the configured port");
+		arguments[2].Should().Be(false, "because browser launch should be fire-and-forget");
+	}
+
+	private static string GetExpectedBrowserProgram() {
+		if (OperatingSystem.IsWindows()) {
+			return "cmd";
+		}
+
+		if (OperatingSystem.IsLinux()) {
+			return "xdg-open";
+		}
+
+		if (OperatingSystem.IsMacOS()) {
+			return "open";
+		}
+
+		return string.Empty;
 	}
 
 	public override void Setup() {

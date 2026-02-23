@@ -144,6 +144,7 @@ public class BindingsModule {
 		services.AddSingleton(deserializer);
 		services.AddSingleton(serializer);
 
+		services.AddTransient<IProcessExecutor, ProcessExecutor>();
 		services.AddTransient<IPackageUtilities, PackageUtilities>();
 		services.AddKeyedTransient<IFollowupUpChainItem, DconfChainItem>(nameof(DconfChainItem));
 		services.AddTransient<IFollowUpChain, FollowUpChain>();

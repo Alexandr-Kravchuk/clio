@@ -222,3 +222,45 @@ Decision: Switched CreatioInstallerService filesystem operations to System.IO.Ab
 Discovery: Full removal inside CreatioInstallerService required avoiding DirectoryInfo/FileInfo flow through strategy/helper boundaries; path-based contracts kept behavior while removing direct System.IO usage in the target file.
 Files: clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/Command/RestoreDb.cs, clio/Command/InstallerHelper.cs, clio/Common/DeploymentStrategies/IDeploymentStrategy.cs, clio/Common/DeploymentStrategies/IISDeploymentStrategy.cs, clio/Common/DeploymentStrategies/DotNetDeploymentStrategy.cs, .codex/workspace-diary.md
 Impact: dotnet build shows zero CLIO003 diagnostics for CreatioInstallerService.cs; deploy/restore flows remain functionally intact with abstraction-friendly contracts.
+
+## 2026-02-23 - Expand ProcessExecutor with launch/capture/realtime APIs
+Context: User requested ProcessExecutor capabilities for fire-and-forget launch, output capture, and realtime output streaming.
+Decision: Reworked ProcessExecutor to add async APIs (`FireAndForgetAsync`, `ExecuteAndCaptureAsync`, `ExecuteWithRealtimeOutputAsync`) with structured options/results, while preserving the legacy `Execute(...)` compatibility path.
+Discovery: Realtime callback behavior is reliably validated via stdout-focused command execution; platform-specific mixed stdout/stderr shell syntax can be flaky in tests.
+Files: clio/Common/ProcessExecutor.cs, clio/Common/IProcessExecutor.cs, clio.tests/Common/ProcessExecutorTests.cs
+Impact: Process execution now supports explicit operational modes with timeout/cancellation metadata, and new unit tests cover the three required behaviors.
+
+## 2026-02-23 - Enforce cross-platform test executability and remove shell-specific ProcessExecutor test commands
+Context: User required ProcessExecutor tests to run on macOS, Linux, and Windows without shell-specific dependencies.
+Decision: Replaced ProcessExecutorTests command helpers with `dotnet`-based invocations (`dotnet --info` / `dotnet --version`) and added AGENTS.md rule requiring cross-platform test executability unless validating OS-specific behavior.
+Discovery: Using direct `dotnet` commands avoids `cmd`/`bash` branching and provides stable output for capture/realtime assertions across platforms.
+Files: clio.tests/Common/ProcessExecutorTests.cs, AGENTS.md, .codex/workspace-diary.md
+Impact: ProcessExecutor tests now avoid platform shell assumptions and repository policy explicitly enforces cross-OS compatibility for future tests.
+
+## 2026-02-23 - Replace direct Process usage in CreatioInstallerService with IProcessExecutor
+Context: User requested removing direct Process usage and updating tests to rely on DI + IProcessExecutor.
+Decision: Injected IProcessExecutor into CreatioInstallerService, replaced pg_restore invocation and browser launch logic to use process executor APIs, and extended ProcessExecutionOptions with environment-variable support for pg_restore password handling.
+Discovery: Running parallel test commands can intermittently lock build outputs; sequential rerun validated the same test sets successfully.
+Files: clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio/Common/ProcessExecutor.cs, clio.tests/CreatioInstallerServiceTests.cs, .codex/workspace-diary.md
+Impact: CreatioInstallerService no longer starts processes directly, and tests now verify browser launch behavior through DI-resolved IProcessExecutor.
+
+## 2026-02-23 - Implement CLIO004 analyzer and validate process-executor migration scope
+Context: User requested implementing the plan to discourage direct System.Diagnostics.Process usage and steer code to IProcessExecutor.
+Decision: Added CLIO004 analyzer + tests, kept ProcessExecutor as the explicit low-level exception via scoped pragma with justification, and validated CreatioInstallerService no longer directly references Process APIs.
+Discovery: Repository has many existing CLIO001/002/003/004 warnings outside the targeted scope; sequential build avoids transient file-lock errors seen during parallel build/test runs.
+Files: Clio.Analyzers/DirectProcessUsageAnalyzer.cs, Clio.Analyzers.Tests/DirectProcessUsageAnalyzerTests.cs, clio/Common/ProcessExecutor.cs, clio/Command/CreatioInstallCommand/CreatioInstallerService.cs, clio.tests/CreatioInstallerServiceTests.cs, .codex/workspace-diary.md
+Impact: CLIO004 policy is now enforced, targeted service migration is verified, and future cleanup can proceed incrementally from analyzer diagnostics.
+
+## 2026-02-23 - Expand CLIO002 to detect Console.Out and Console.OutputEncoding usage
+Context: User reported ConsoleOutputAnalyzer missed Console.Out-based async writes and output stream/encoding direct access.
+Decision: Extended ConsoleOutputAnalyzer to inspect member access and invocation chains so it now reports CLIO002 for Console.Out, Console.OutputEncoding, and Console.Out.* invocations (e.g., WriteAsync), while preserving test-assembly and Clio.ConsoleLogger exclusions.
+Discovery: Invocation-only matching on methods declared by System.Console misses Console.Out.WriteAsync because the method is declared on TextWriter.
+Files: Clio.Analyzers/ConsoleOutputAnalyzer.cs, Clio.Analyzers.Tests/ConsoleOutputAnalyzerTests.cs, .codex/workspace-diary.md
+Impact: CLIO002 now enforces logger-only output policy for additional real-world console patterns previously slipping through.
+
+## 2026-02-23 - Remove CLIO004 ProcessStartInfo usage in RestoreDb
+Context: User requested addressing CLIO004 warning for direct ProcessStartInfo usage in RestoreDb.cs.
+Decision: Injected IProcessExecutor into RestoreDbCommand and replaced ExecutePgRestoreCommand low-level Process/ProcessStartInfo logic with ProcessExecutionOptions + ExecuteWithRealtimeOutputAsync, preserving debug and throttled progress logging behavior.
+Discovery: Constructor-based tests for RestoreDb required DI argument updates to include IProcessExecutor substitute.
+Files: clio/Command/RestoreDb.cs, clio.tests/Command/RestoreDb.LocalServer.Tests.cs, clio.tests/Command/RestoreDb.Tests.cs, .codex/workspace-diary.md
+Impact: RestoreDb no longer triggers CLIO004 in this file and pg_restore execution now follows shared process abstraction.
