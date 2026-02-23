@@ -11,7 +11,7 @@ namespace Clio.Common;
 
 #region Class: FileSystem
 
-public class FileSystem(Ms.IFileSystem msFileSystem) : IFileSystem{
+public class FileSystem(Ms.IFileSystem msFileSystem) : IFileSystem {
 	#region Class: Nested
 
 	public enum Algorithm{

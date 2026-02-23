@@ -29,6 +29,9 @@ SYNOPSIS
 
 OPTIONS
 
+    -p, --path PATH                Path to infrastructure files
+                                    (default: auto-detected from clio settings)
+
     PostgreSQL Resource Configuration:
     --pg-limit-memory SIZE          PostgreSQL memory limit
                                     Default: 4Gi

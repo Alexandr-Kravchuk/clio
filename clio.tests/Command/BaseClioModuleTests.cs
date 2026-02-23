@@ -1,49 +1,55 @@
-using Clio.Tests.Infrastructure;
-using NUnit.Framework;
 using System;
 using System.IO.Abstractions.TestingHelpers;
-using Terrasoft.Core.Configuration;
-using IFileSystem = System.IO.Abstractions.IFileSystem;
+using Clio.Tests.Infrastructure;
+using NUnit.Framework;
 
 namespace Clio.Tests.Command;
 
 [TestFixture(Category = "UnitTests")]
-public abstract class BaseClioModuleTests
-{
+public abstract class BaseClioModuleTests {
+	#region Fields: Private
 
-	#region Setup/Teardown
-
-	[SetUp]
-	public virtual void Setup(){
-		FileSystem = CreateFs();
-		
-		BindingsModule bindingModule = new(FileSystem);
-		Container = bindingModule.Register(EnvironmentSettings, AdditionalRegistrations);
-	}
+	private BindingsModule _bindingsModule;
 
 	#endregion
 
 	#region Fields: Protected
 
-	protected MockFileSystem FileSystem;
 	protected IServiceProvider Container;
+
 	protected EnvironmentSettings EnvironmentSettings = new() {
 		Uri = "http://localhost",
 		Login = "",
 		Password = ""
 	};
 
+	protected MockFileSystem FileSystem;
+
 	#endregion
 
 	#region Methods: Protected
 
-	protected virtual MockFileSystem CreateFs(){
-		return TestFileSystem.MockFileSystem();
-	}
+	protected virtual void AdditionalRegistrations(IServiceCollection containerBuilder) { }
 
-	protected virtual void AdditionalRegistrations(IServiceCollection containerBuilder) {
+	protected virtual MockFileSystem CreateFs() {
+		return TestFileSystem.MockFileSystem();
 	}
 
 	#endregion
 
+	#region Methods: Public
+
+	[SetUp]
+	public virtual void Setup() {
+		FileSystem = CreateFs();
+		_bindingsModule = new BindingsModule(FileSystem);
+		Container = _bindingsModule.Register(EnvironmentSettings, AdditionalRegistrations);
+	}
+
+
+	[TearDown]
+	public virtual void TearDown() {
+	}
+
+	#endregion
 }

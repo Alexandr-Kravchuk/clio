@@ -11,6 +11,12 @@ The `CreateK8FilesCommand` generates Kubernetes deployment configuration files f
 
 ## Command Options
 
+### General
+
+| Option          | Description                                                      | Type     | Default                               | Required |
+|-----------------|------------------------------------------------------------------|----------|---------------------------------------|----------|
+| `-p, --path`    | Path to infrastructure files                                     | `string` | Auto-detected from clio settings path | No       |
+
 ### PostgreSQL Resource Configuration
 
 | Option                 | Description                       | Type     | Default | Required |

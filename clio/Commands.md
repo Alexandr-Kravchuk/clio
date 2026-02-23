@@ -3639,6 +3639,9 @@ clio ck8f [OPTIONS]
 
 ### Options
 
+**General:**
+- `-p, --path <PATH>` - Path to infrastructure files (default: auto-detected from clio settings)
+
 **PostgreSQL Resource Configuration:**
 - `--pg-limit-memory <SIZE>` - PostgreSQL memory limit (default: 4Gi)
 - `--pg-limit-cpu <NUMBER>` - PostgreSQL CPU limit (default: 2)

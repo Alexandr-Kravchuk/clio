@@ -111,9 +111,9 @@ public static class InstallerHelper
 			logger.WriteDebug($"UnzipOrTakeExisting - Target folder: {targetFolder}");
 			logger.WriteDebug($"UnzipOrTakeExisting - Directory exists: {Directory.Exists(targetFolder)}");
 			
-			// Check if directory exists and contains extracted application files
-			// We check for key application files/folders that indicate successful extraction
-			// Note: 'db' folder is created by database restore script, not included in archive
+			// Check if a directory exists and contains extracted application files
+			// We check for key application files/folders that indicate a successful extraction
+			// Note: 'db' folder is created by database restore script, not included in the archive
 			if (Directory.Exists(targetFolder)) {
 				var existingDir = new DirectoryInfo(targetFolder);
 				var files = existingDir.GetFiles();

@@ -320,3 +320,28 @@ Decision: Added logger fallback in CreatioPackage process execution (`_logger ??
 Discovery: A null logger in `CreatioPackage.ExecuteDotnetCommand` caused package creation failures, and failing integration tests left process CWD altered, cascading into unrelated YAML scenario test failures.
 Files: clio/Package/CreatioPackage.cs, clio.tests/CreatioPkgTests.cs, .codex/workspace-diary.md
 Impact: Full `clio.tests` suite now passes again with no cascading environment-state pollution between tests.
+
+## 2026-02-23 - Fix CreateInfrastructure CLIO002/CLIO003 and align create-k8-files docs
+Context: User requested clearing specific CLIO002 and CLIO003 diagnostics in CreateInfrastructure.cs.
+Decision: Replaced the four flagged deployment-instruction Console.WriteLine calls with ConsoleLogger.Instance.WriteLine, and replaced System.IO.Path usage with Clio.Common.IFileSystem abstraction (GetFilesInfos(...).DirectoryName + NormalizeFilePathByPlatform).
+Discovery: Command docs for create-k8-files were missing the existing -p/--path option, so required doc surfaces needed alignment even though runtime behavior did not change.
+Files: clio/Command/CreateInfrastructure.cs, clio/help/en/create-k8-files.txt, clio/docs/commands/CreateK8FilesCommand.md, clio/Commands.md, .codex/workspace-diary.md
+Impact: Requested CreateInfrastructure CLIO002/CLIO003 warnings are removed and command documentation now reflects current options consistently across help/index/detail docs.
+
+
+## 2026-02-23 - Fix CLIO003 in InfrastructurePathProvider
+Context: User requested removal of CLIO003 warning in InfrastructurePathProvider.cs.
+Decision: Removed System.IO.Path usage and switched default infrastructure path composition to a separator-safe string interpolation ({SettingsRepository.AppSettingsFolderPath}/infrastructure).
+Discovery: This was a localized CLIO003 issue; no command options or behavior contract changed.
+Files: clio/Common/InfrastructurePathProvider.cs, .codex/workspace-diary.md
+Impact: InfrastructurePathProvider no longer emits CLIO003 while preserving resolved default path behavior.
+
+
+## 2026-02-23 - Use abstraction Path.Join in InfrastructurePathProvider
+Context: User requested using Path.Join (cross-platform) instead of manual string concatenation in InfrastructurePathProvider.
+Decision: Refactored InfrastructurePathProvider to use System.IO.Abstractions.IFileSystem.Path.Join, switched dependent constructors to DI-only usage (removed fallback 
+ew InfrastructurePathProvider()), and updated Create/Deploy infrastructure tests accordingly.
+Discovery: DeployInfrastructureCommand and related tests required constructor wiring updates when CreateInfrastructureCommand stopped using optional provider fallback; command behavior/docs remained unchanged.
+Files: clio/Common/InfrastructurePathProvider.cs, clio/Command/CreateInfrastructure.cs, clio/Command/OpenInfrastructureCommand.cs, clio/Command/DeployInfrastructureCommand.cs, clio.tests/Common/InfrastructurePathProviderTests.cs, clio.tests/Command/CreateInfrastructureCommand.Tests.cs, clio.tests/Command/DeployInfrastructureCommandTests.cs, .codex/workspace-diary.md
+Impact: InfrastructurePathProvider now uses cross-platform Path.Join through abstraction and no longer emits CLIO003 for this file, with DI/test graph kept compilable.
+

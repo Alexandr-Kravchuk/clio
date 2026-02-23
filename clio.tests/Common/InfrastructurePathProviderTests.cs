@@ -1,7 +1,10 @@
 using Clio.Common;
 using FluentAssertions;
+using NSubstitute;
 using NUnit.Framework;
 using System.IO;
+using MsFileSystem = System.IO.Abstractions.IFileSystem;
+using MsPath = System.IO.Abstractions.IPath;
 
 namespace Clio.Tests.Common
 {
@@ -11,11 +14,17 @@ namespace Clio.Tests.Common
 	public class InfrastructurePathProviderTests
 	{
 		private IInfrastructurePathProvider _pathProvider;
+		private MsFileSystem _fileSystem;
 
 		[SetUp]
 		public void Setup()
 		{
-			_pathProvider = new InfrastructurePathProvider();
+			_fileSystem = Substitute.For<MsFileSystem>();
+			MsPath path = Substitute.For<MsPath>();
+			path.Join(SettingsRepository.AppSettingsFolderPath, "infrastructure")
+				.Returns(Path.Join(SettingsRepository.AppSettingsFolderPath, "infrastructure"));
+			_fileSystem.Path.Returns(path);
+			_pathProvider = new InfrastructurePathProvider(_fileSystem);
 		}
 
 		[Test]

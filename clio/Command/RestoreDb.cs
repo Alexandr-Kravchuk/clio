@@ -262,25 +262,24 @@ public class RestoreDbCommand : Command<RestoreDbCommandOptions>
 
 			_logger.WriteInfo($"Extracting ZIP file to temporary directory: {tempDir}");
 
-			using (var archive = System.IO.Compression.ZipFile.OpenRead(zipPath)) {
-				string searchPattern = dbType?.ToLowerInvariant() == "mssql" ? "*.bak" : "*.backup";
+			using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+			string searchPattern = dbType?.ToLowerInvariant() == "mssql" ? "*.bak" : "*.backup";
 				
-				var backupEntry = archive.Entries
-					.FirstOrDefault(e => e.FullName.Contains("db/") && 
-					                    Path.GetExtension(e.Name).ToLowerInvariant() == (dbType?.ToLowerInvariant() == "mssql" ? ".bak" : ".backup"));
+			var backupEntry = archive.Entries
+									 .FirstOrDefault(e => e.FullName.Contains("db/") && 
+														  Path.GetExtension(e.Name).ToLowerInvariant() == (dbType?.ToLowerInvariant() == "mssql" ? ".bak" : ".backup"));
 
-				if (backupEntry == null) {
-					_logger.WriteError($"No backup file found in ZIP. Expected a file in 'db/' folder with extension {searchPattern}");
-					return null;
-				}
-
-				string extractPath = Path.Combine(tempDir, backupEntry.Name);
-				backupEntry.ExtractToFile(extractPath);
-				
-				_logger.WriteInfo($"Extracted: {backupEntry.FullName} ({backupEntry.Length / 1024 / 1024} MB)");
-				
-				return extractPath;
+			if (backupEntry == null) {
+				_logger.WriteError($"No backup file found in ZIP. Expected a file in 'db/' folder with extension {searchPattern}");
+				return null;
 			}
+
+			string extractPath = Path.Combine(tempDir, backupEntry.Name);
+			backupEntry.ExtractToFile(extractPath);
+				
+			_logger.WriteInfo($"Extracted: {backupEntry.FullName} ({backupEntry.Length / 1024 / 1024} MB)");
+				
+			return extractPath;
 		} catch (Exception ex) {
 			_logger.WriteError($"Failed to extract ZIP file: {ex.Message}");
 			return null;

@@ -24,7 +24,8 @@ public class DeployInfrastructureCommandTests : BaseCommandTests<DeployInfrastru
 	private IProcessExecutor _processExecutor;
 
 	#endregion
-
+	
+	
 	#region Methods: Public
 
 	[Test]
@@ -183,7 +184,6 @@ public class DeployInfrastructureCommandTests : BaseCommandTests<DeployInfrastru
 		postgres.CheckTemplateExists("template0").Throws(new Exception("Connection refused"));
 		_dbClientFactory.CreatePostgresSilent(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>()).Returns(postgres);
 
-
 		// Act
 		int result = _command.Execute(options);
 
@@ -191,7 +191,10 @@ public class DeployInfrastructureCommandTests : BaseCommandTests<DeployInfrastru
 		result.Should().Be(1, "because Postgres SQL connection failed after retries");
 		_dbClientFactory.Received(_command.VerifyPostgresConnectionMaxRetryAttempts)
 						.CreatePostgresSilent(5432, "postgres", "password");
-		_logger.Received().WriteError(Arg.Is<string>(s => s.Contains("Postgres SQL connection failed")));
+		
+		_logger
+			.Received()
+			.WriteError(Arg.Is<string>(s => s.Contains("Postgres SQL connection failed")));
 	}
 
 	[Test]
@@ -255,28 +258,52 @@ public class DeployInfrastructureCommandTests : BaseCommandTests<DeployInfrastru
 		postgres.Received().CheckTemplateExists("template0");
 	}
 
-	[SetUp]
-	public override void Setup() {
+	
+	
+	protected override void AdditionalRegistrations(IServiceCollection containerBuilder) {
+		base.AdditionalRegistrations(containerBuilder);
+		
 		_processExecutor = Substitute.For<IProcessExecutor>();
 		_logger = Substitute.For<ILogger>();
 		_fileSystem = Substitute.For<IFileSystem>();
 		_k8Commands = Substitute.For<Ik8Commands>();
 		_dbClientFactory = Substitute.For<IDbClientFactory>();
 		_infrastructurePathProvider = Substitute.For<IInfrastructurePathProvider>();
+		
+		containerBuilder.AddTransient(_ => _processExecutor);
+		containerBuilder.AddSingleton(_logger);
+		containerBuilder.AddTransient(_ => _fileSystem);
+		containerBuilder.AddTransient(_=> _k8Commands);
+		containerBuilder.AddTransient(_=> _dbClientFactory);
+		containerBuilder.AddTransient(_=> _infrastructurePathProvider);
+	}
+	
+	
+	public override void TearDown() {
+		_processExecutor = null;
+		_logger = null;
+		_fileSystem = null;
+		_k8Commands = null;
+		_dbClientFactory = null;
+		_infrastructurePathProvider = null;
+		base.TearDown();
+	}
+	
+	
+	public override void Setup() {
+		base.Setup();
+		_command = Container.GetRequiredService<DeployInfrastructureCommand>();
 
-		_command = new DeployInfrastructureCommand(
-			_processExecutor,
-			_logger,
-			_fileSystem,
-			_k8Commands,
-			_dbClientFactory,
-			_infrastructurePathProvider) {
-			//Speeds things up in tests
-			RetryDelay = 10, PodDelay = 10, VerifyPostgresConnectionMaxRetryAttempts = 3,
-			VerifyPostgresConnectionDelaySeconds = 1, VerifyRedisConnectionMaxRetryAttempts = 3,
-			VerifyRedisConnectionDelaySeconds = 1, CleanupOrphanedPersistentVolumesMaxAttempts = 2,
-			VerifyRedisConnectionConnectionTimeout = 100, VerifyRedisConnectionSyncTimeout = 100
-		};
+		_command.RetryDelay = 10;
+		_command.PodDelay = 10;
+		_command.VerifyPostgresConnectionMaxRetryAttempts = 3;
+		_command.VerifyPostgresConnectionDelaySeconds = 1;
+		_command.VerifyRedisConnectionMaxRetryAttempts = 3;
+		_command.VerifyRedisConnectionDelaySeconds = 1;
+		_command.CleanupOrphanedPersistentVolumesMaxAttempts = 2;
+		_command.VerifyRedisConnectionConnectionTimeout = 100;
+		_command.VerifyRedisConnectionSyncTimeout = 100;
+		
 
 		// Setup default successful responses
 		_processExecutor.Execute("kubectl", Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<bool>()

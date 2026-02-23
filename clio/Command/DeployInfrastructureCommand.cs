@@ -28,7 +28,8 @@ public class DeployInfrastructureOptions{
 }
 
 public class DeployInfrastructureCommand(IProcessExecutor processExecutor, ILogger logger, IFileSystem fileSystem,
-	Ik8Commands k8Commands, IDbClientFactory dbClientFactory, IInfrastructurePathProvider infrastructurePathProvider)
+	Ik8Commands k8Commands, IDbClientFactory dbClientFactory, IInfrastructurePathProvider infrastructurePathProvider,
+	CreateInfrastructureCommand createInfrastructureCommand)
 	: Command<DeployInfrastructureOptions>{
 
 	#region Class: Nested
@@ -239,7 +240,6 @@ public class DeployInfrastructureCommand(IProcessExecutor processExecutor, ILogg
 				PostgresRequestMemory = "2Gi", PostgresRequestCpu = "1", MssqlLimitMemory = "4Gi", MssqlLimitCpu = "2",
 				MssqlRequestMemory = "2Gi", MssqlRequestCpu = "1"
 			};
-			CreateInfrastructureCommand createInfrastructureCommand = new(fileSystem);
 			createInfrastructureCommand.Execute(options);
 
 			logger.WriteInfo($"✓ Infrastructure files generated at: {infrastructurePath}");

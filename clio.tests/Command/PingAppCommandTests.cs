@@ -5,17 +5,27 @@ using NUnit.Framework;
 
 namespace Clio.Tests.Command;
 
-[TestFixture(Category = "Unit")]
-internal class PingAppCommandTests : BaseClioModuleTests
-{
+[TestFixture]
+internal class PingAppCommandTests : BaseCommandTests<PingAppOptions>{
+	
+	private PingAppCommand _command;
+	private IApplicationClient _creatioClient;
 
-	private readonly IApplicationClient _creatioClient = Substitute.For<IApplicationClient>();
+	public override void Setup() {
+		base.Setup();
+		_command = Container.GetRequiredService<PingAppCommand>();
+	}
 
-	public override void Setup(){}
+	public override void TearDown() {
+		_creatioClient.ClearReceivedCalls();
+		base.TearDown();
+		
+	}
 
 	protected override void AdditionalRegistrations(IServiceCollection containerBuilder) {
 		base.AdditionalRegistrations(containerBuilder);
-		containerBuilder.AddSingleton<IApplicationClient>(_creatioClient);
+		_creatioClient = Substitute.For<IApplicationClient>();
+		containerBuilder.AddTransient<IApplicationClient>(_=> _creatioClient);
 	}
 
 	[TestCase(true)]
@@ -23,15 +33,14 @@ internal class PingAppCommandTests : BaseClioModuleTests
 	public void PingAppCommandShouldBeUsesAllRetryOptions(bool isNetCore) {
 		//Arrange
 		EnvironmentSettings.IsNetCore = isNetCore;
-		FileSystem = CreateFs();
-		BindingsModule bindingModule = new(FileSystem);
-		Container = bindingModule.Register(EnvironmentSettings, AdditionalRegistrations);
-			
-		PingAppCommand command = Container.GetRequiredService<PingAppCommand>();
-		PingAppOptions options = new PingAppOptions() { TimeOut = 1, RetryCount = 2, RetryDelay = 3 };
+		PingAppOptions options = new () {
+			TimeOut = 1, 
+			RetryCount = 2, 
+			RetryDelay = 3
+		};
 			
 		// Act
-		command.Execute(options);
+		_command.Execute(options);
 
 		// Assert
 		if(isNetCore) {
@@ -41,34 +50,26 @@ internal class PingAppCommandTests : BaseClioModuleTests
 			_creatioClient.Received(1)
 				.ExecutePostRequest(Arg.Any<string>(), Arg.Any<string>(), 1, 2, 3);
 		}
-		_creatioClient.ClearReceivedCalls();
 	}
 
 	[TestCase(true)]
 	[TestCase(false)]
 	public void PingAppCommandShouldBeUsesAllRetryOptionsOnNet6Environment(bool isNetCore) {
 		//Arrange
-		FileSystem = CreateFs();
-		BindingsModule bindingModule = new(FileSystem);
-		Container = bindingModule.Register(EnvironmentSettings, AdditionalRegistrations);
-		PingAppCommand command = Container.GetRequiredService<PingAppCommand>();
-		PingAppOptions options = new PingAppOptions() {
+		PingAppOptions options = new () {
 			TimeOut = 1,
 			RetryCount = 2,
 			RetryDelay = 3,
 			IsNetCore = isNetCore
 		};
-		command.EnvironmentSettings.IsNetCore = true;
+		_command.EnvironmentSettings.IsNetCore = true;
 			
 		// Act
-		command.Execute(options);
+		_command.Execute(options);
 
 		//Assert
-		if(isNetCore) {
-				
-		}else {
+		if(!isNetCore) {
 			_creatioClient.Received(1).ExecuteGetRequest(Arg.Any<string>(), 1, 2, 3);
 		}
-		_creatioClient.ClearReceivedCalls();
 	}
 }
