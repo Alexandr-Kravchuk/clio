@@ -65,6 +65,8 @@ jobs:
       - name: Pack clio with release version
         run: |
           $version = "${{ steps.extract_version.outputs.VERSION }}"
+          echo "Building clio with version: $version"
+          dotnet build .\clio\clio.csproj -c Release --no-incremental
           echo "Packing clio with version: $version"
           dotnet pack .\clio\clio.csproj --configuration Release --output ./output /p:AssemblyVersion=$version /p:FileVersion=$version /p:Version=$version
         shell: powershell
