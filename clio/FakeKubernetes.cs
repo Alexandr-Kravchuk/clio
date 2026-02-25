@@ -110,12 +110,12 @@ public class FakeKubernetes : IKubernetes
 	public IResourceV1beta2Operations ResourceV1beta2 { get; }
 	public ISchedulingOperations Scheduling { get; }
 	public ISchedulingV1Operations SchedulingV1 { get; }
+	public ISchedulingV1alpha1Operations SchedulingV1alpha1 { get; }
 	public IStorageOperations Storage { get; }
 	public IStorageV1Operations StorageV1 { get; }
-	public IStorageV1alpha1Operations StorageV1alpha1 { get; }
 	public IStorageV1beta1Operations StorageV1beta1 { get; }
 	public IStoragemigrationOperations Storagemigration { get; }
-	public IStoragemigrationV1alpha1Operations StoragemigrationV1alpha1 { get; }
+	public IStoragemigrationV1beta1Operations StoragemigrationV1beta1 { get; }
 	public ILogsOperations Logs { get; }
 	public IVersionOperations Version { get; }
 	public ICustomObjectsOperations CustomObjects { get; }

@@ -10,7 +10,7 @@
 		<PackageTags>cli ATF clio creatio</PackageTags>
 		<NeutralLanguage>en</NeutralLanguage>
 		<!-- Default version for local development. Will be overridden during release from tag -->
-		<AssemblyVersion Condition="'$(AssemblyVersion)' == ''">8.0.2.5</AssemblyVersion>
+		<AssemblyVersion Condition="'$(AssemblyVersion)' == ''">8.0.2.6</AssemblyVersion>
 		<FileVersion>$(AssemblyVersion)</FileVersion>
 		<Version>$(AssemblyVersion)</Version>
 		<Description>CLI interface for Creatio</Description>
@@ -117,14 +117,16 @@
 	</Choose>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Clio.Analyzers\Clio.Analyzers.csproj"
+		<ProjectReference Condition="'$(Configuration)|$(Platform)'!='Release|AnyCPU'" 
+						  Include="..\Clio.Analyzers\Clio.Analyzers.csproj"
 		                  OutputItemType="Analyzer"
 		                  ReferenceOutputAssembly="false" />
+		
 		<PackageReference Include="ConsoleTables" Version="2.7.0"/>
 		<PackageReference Include="DocumentFormat.OpenXmlSDK" Version="2.0.0"/>
 		<PackageReference Include="ErrorOr" Version="2.1.0"/>
 		<PackageReference Include="FluentValidation" Version="12.1.1"/>
-		<PackageReference Include="KubernetesClient" Version="18.0.13"/>
+		<PackageReference Include="KubernetesClient" Version="19.0.2" />
 		<PackageReference Include="MediatR" Version="[12.5.0]"/>
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4"/>
 		<PackageReference Include="Microsoft.Dism" Version="4.0.7"/>
