@@ -393,3 +393,10 @@ Findings
 6. Medium (security): argument injection surface in command-line construction for pg_restore.
    RestoreDb.cs:391 (/C:/Projects/clio/clio/Command/RestoreDb.cs:391) builds raw argument string from config/user-derived fields (Hostname, Username, dbName) and passes through generic string-based executor API (ProcessExecutor.cs:278 (/C:/Projects/clio/clio/Common/ProcessExecutor.cs:278)).
    Use tokenized argument APIs (ArgumentList) and stricter input validation to reduce injection risk.
+
+## 2026-02-26 21:27 – Проектный аудит качества/перф/безопасности
+Context: Пользователь запросил общий анализ кода проекта с акцентом на практические риски.
+Decision: Выполнен статический обзор по трем направлениям (code quality, performance, security), плюс `dotnet build` и `dotnet test` для подтверждения фактического состояния.
+Discovery: Обнаружены 8 падающих тестов в `StartCommand`/`StopCommand`, риск утечки секрета в `NuGetManager.Push` (API key в аргументах процесса), а также системный техдолг по CLIO-анализаторам (952 warning при сборке).
+Files: clio/Command/StartCommand.cs, clio/Command/StopCommand.cs, clio/Common/ProcessExecutor.cs, clio/Command/RestoreDb.cs, clio/Package/NuGet/NuGetManager.cs, clio/Package/NuGet/NugetPackageRestorer.cs, clio/Common/FileSystem.cs, clio.tests/Command/StartCommand.Tests.cs, clio.tests/Command/StopCommand.Tests.cs, .codex/workspace-diary.md
+Impact: Зафиксирован приоритетный бэклог исправлений для надежности команд запуска/остановки, безопасности вызовов внешних утилит и снижения технического долга по архитектурным правилам.
