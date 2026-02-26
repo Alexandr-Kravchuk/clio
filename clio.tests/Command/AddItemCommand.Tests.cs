@@ -6,6 +6,7 @@ using Clio.Project;
 using FluentAssertions;
 using NSubstitute;
 using NUnit.Framework;
+using System.Runtime.InteropServices;
 using System.IO.Abstractions.TestingHelpers;
 
 namespace Clio.Tests.Command;
@@ -84,9 +85,12 @@ internal class AddItemCommandTests : BaseCommandTests<AddItemOptions>{
 	[Category("Unit")]
 	public void Execute_TemplateItem_CallsUnderlyingProjectWithTemplateBody() {
 		// Arrange
-		_fileSystem.AddDirectory(@"C:\work\tpl");
-		_fileSystem.AddFile(@"C:\work\tpl\service-template.tpl", new MockFileData("public class <Name> {}"));
-		_fileSystem.Directory.SetCurrentDirectory(@"C:\work");
+		string workDir = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\work" : "/work";
+		string templateDir = _fileSystem.Path.Combine(workDir, "tpl");
+		string templateFilePath = _fileSystem.Path.Combine(templateDir, "service-template.tpl");
+		_fileSystem.AddDirectory(templateDir);
+		_fileSystem.AddFile(templateFilePath, new MockFileData("public class <Name> {}"));
+		_fileSystem.Directory.SetCurrentDirectory(workDir);
 		AddItemOptions options = new() {
 			ItemType = "service",
 			ItemName = "MyService",

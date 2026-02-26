@@ -7,6 +7,7 @@ using Clio.Utilities;
 using FluentAssertions;
 using NSubstitute;
 using NUnit.Framework;
+using System.Threading.Tasks;
 
 namespace Clio.Tests.Command;
 
@@ -231,16 +232,17 @@ public class OpenAppCommandTests : BaseCommandTests<OpenAppOptions>{
 		};
 
 		_settingsRepository.GetEnvironment(options).Returns(environment);
+		_processExecutor.FireAndForgetAsync(Arg.Any<ProcessExecutionOptions>())
+			.Returns(Task.FromResult(new ProcessLaunchResult { Started = true }));
 
 		// Act
 		int result = _command.Execute(options);
 
 		// Assert
 		result.Should().Be(0, "command should succeed when environment has valid URI on macOS");
-		_processExecutor.Received(1).Execute(
-			"open",
-			Arg.Is<string>(url => url.Contains("test.creatio.com")),
-			false);
+		_processExecutor.Received(1).FireAndForgetAsync(
+			Arg.Is<ProcessExecutionOptions>(po =>
+				po.Program == "open" && po.Arguments.Contains("test.creatio.com")));
 	}
 
 	[Test]

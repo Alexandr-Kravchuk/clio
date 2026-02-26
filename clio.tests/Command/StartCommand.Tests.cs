@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Clio.Command;
 using Clio.Common;
@@ -53,6 +54,10 @@ public class StartCommandTestCase : BaseCommandTests<StartOptions>
 	[Description("Starts IIS site and app pool when IIS site is detected for the environment")]
 	public void Execute_StartsIISSiteAndAppPool_WhenIISSiteDetected()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
@@ -94,6 +99,10 @@ public class StartCommandTestCase : BaseCommandTests<StartOptions>
 	[Description("Reports success when IIS site and app pool are already running")]
 	public void Execute_ReportsSuccess_WhenIISSiteAndAppPoolAlreadyRunning()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
@@ -238,6 +247,10 @@ public class StartCommandTestCase : BaseCommandTests<StartOptions>
 	[Description("Returns error when IIS app pool fails to start")]
 	public void Execute_ReturnsError_WhenIISAppPoolFailsToStart()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
@@ -294,6 +307,10 @@ public class StartCommandTestCase : BaseCommandTests<StartOptions>
 	[Description("Pings site after starting IIS site successfully")]
 	public void Execute_PingsSite_AfterStartingIISSite()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		string uri = "https://mysite.com";

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Clio.Command;
 using Clio.Common;
@@ -46,6 +47,10 @@ public class StopCommandTestCase : BaseCommandTests<StopOptions>
 	[Description("Stops IIS app pool when IIS site is detected for the environment")]
 	public void Execute_StopsIISAppPool_WhenIISSiteDetected()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
@@ -82,6 +87,10 @@ public class StopCommandTestCase : BaseCommandTests<StopOptions>
 	[Description("Attempts all stop methods when stopping environment")]
 	public void Execute_AttemptsAllStopMethods_WhenStoppingEnvironment()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\Creatio\Test";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
@@ -124,6 +133,10 @@ public class StopCommandTestCase : BaseCommandTests<StopOptions>
 	[Description("Continues with other stop methods when IIS app pool stop fails")]
 	public void Execute_ContinuesWithOtherMethods_WhenIISStopFails()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
@@ -153,6 +166,10 @@ public class StopCommandTestCase : BaseCommandTests<StopOptions>
 	[Description("Reports success when at least one stop method succeeds")]
 	public void Execute_ReportsSuccess_WhenAtLeastOneMethodSucceeds()
 	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			Assert.Ignore("This test is only applicable on Windows");
+		}
+
 		// Arrange
 		string envPath = @"C:\inetpub\wwwroot\Creatio";
 		EnvironmentSettings env = new() { EnvironmentPath = envPath };
