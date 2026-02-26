@@ -65,7 +65,7 @@ namespace Clio.Command
 
 		public override int Execute(PushWorkspaceCommandOptions options) {
 			try {
-				Console.WriteLine("Push workspace...");
+				ConsoleLogger.Instance.WriteLine("Push workspace...");
 				CallbackInfo(options.CallbackProcess, "Push workspace...");
 				_workspace.Install(useApplicationInstaller: options.UseApplicationInstaller);
 				
@@ -87,12 +87,12 @@ namespace Clio.Command
 					var unlockPackageCommandOptions = new UnlockPackageOptions();
 					unlockPackageCommandOptions.CopyFromEnvironmentSettings(options);
 					unlockPackageCommandOptions.Name = string.Join(',', _workspace.GetFilteredPackages());
-					Console.WriteLine("Unlock packages...");
+					ConsoleLogger.Instance.WriteLine("Unlock packages...");
 					CallbackInfo(options.CallbackProcess, "Unlock packages...");
 					_unlockPackageCommand.Execute(unlockPackageCommandOptions);
 				}
 				CallbackInfo(options.CallbackProcess, "Workspace was successfully restored");
-				Console.WriteLine("Done");
+				ConsoleLogger.Instance.WriteLine("Done");
 				return 0;
 			} catch (Exception e) {
 				Console.WriteLine(e.Message);

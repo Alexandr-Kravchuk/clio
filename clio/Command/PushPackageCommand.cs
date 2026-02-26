@@ -125,7 +125,7 @@
 						
 						bool _loopSuccess = _packageInstaller.Install(fullPath, _environmentSettings,
 							packageInstallOptions, options.ReportPath);
-						Console.WriteLine(_loopSuccess ? $"Done installing app by id: {MarketplaceId}" : $"Error installing app by id: {MarketplaceId}");
+						ConsoleLogger.Instance.WriteLine(_loopSuccess ? $"Done installing app by id: {MarketplaceId}" : $"Error installing app by id: {MarketplaceId}");
 					}
 					success = true;
 				}
@@ -138,12 +138,12 @@
 					CompileConfigurationOptions compileOptions = CreateFromPushPkgOptions(options);
 					success &= _compileConfigurationCommand.Execute(compileOptions) == 0;
 				}
-				Console.WriteLine(success ? "Done" : "Error");
+				ConsoleLogger.Instance.WriteLine(success ? "Done" : "Error");
 				return success ? 0 : 1;
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine(e.StackTrace);
+				ConsoleLogger.Instance.WriteLine(e.StackTrace);
 				return 1;
 			}
 		}

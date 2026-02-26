@@ -414,3 +414,10 @@ Decision: Выполнены безопасные замены `Console.WriteLin
 Discovery: После этих правок проект продолжает собираться и полный тестовый прогон остается зеленым на текущей ветке.
 Files: .codex/warnings/refactoring-tracker.md, clio/Command/CreateTestProjectCommand.cs, clio/Command/InstallApplicationOptions.cs, clio/Command/InstallNugetPackageCommand.cs, clio/Command/InstallerHelper.cs, clio/Command/OpenInfrastructureCommand.cs, .codex/workspace-diary.md
 Impact: Ускорен low-risk этап очистки CLIO002 и сохранена детальная точка продолжения процесса в трекере.
+
+## 2026-02-27 00:10 – Закрыты еще 10 CLIO002 (Pack/Push команды)
+Context: Пользователь попросил продолжить и закрыть еще 10 warning.
+Decision: Заменены еще 10 вызовов `Console.WriteLine` на `ConsoleLogger.Instance.WriteLine` в командах упаковки/публикации пакетов и workspace; прогресс трекера обновлен до `21/941`.
+Discovery: Проведен doc-review по затронутым командам (`pack-nuget-pkg`, `push-nuget-pkg`, `push-pkg`, `push-workspace`) через `document-command` workflow; docs reviewed, no update required, так как пользовательский контракт команд не менялся.
+Files: .codex/warnings/refactoring-tracker.md, clio/Command/PackNuGetPackageCommand.cs, clio/Command/PushNuGetPackagesCommand.cs, clio/Command/PushPackageCommand.cs, clio/Command/PushWorkspaceCommand.cs, clio/Commands.md, clio/help/en/push-pkg.txt, .codex/workspace-diary.md
+Impact: Безопасно снижен объем CLIO002, сохранен зеленый build/test и зафиксирована точка продолжения на следующую итерацию.

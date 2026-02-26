@@ -83,10 +83,10 @@ namespace Clio.Command
 					? Enumerable.Empty<PackageDependency>() 
 					: ParseDependencies(options.Dependencies);
 				_nugetManager.Pack(options.PackagePath, dependencies, options.SkipPdb, options.NupkgDirectory);
-				Console.WriteLine("Done");
+				ConsoleLogger.Instance.WriteLine("Done");
 				return 0;
 			} catch (Exception e) {
-				Console.WriteLine(e.Message);
+				ConsoleLogger.Instance.WriteLine(e.Message);
 				return 1;
 			}
 		}

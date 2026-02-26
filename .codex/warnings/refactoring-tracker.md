@@ -8,7 +8,7 @@ Total unique warning locations: 941
 Status legend: [ ] TODO, [~] IN_PROGRESS, [x] DONE
 
 ## Progress
-- Completed in branch: 11/941
+- Completed in branch: 21/941
 
 ## Completed
 - [x] CLIO002 | clio/Command/Command.cs:16 | Replace Console.WriteLine with ConsoleLogger
@@ -89,18 +89,18 @@ Status legend: [ ] TODO, [~] IN_PROGRESS, [x] DONE
 - [x] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:42:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [x] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:49:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [x] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:50:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PackNuGetPackageCommand.cs:86:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PackNuGetPackageCommand.cs:89:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushNuGetPackagesCommand.cs:36:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushNuGetPackagesCommand.cs:39:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushPackageCommand.cs:128:7 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushPackageCommand.cs:141:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushPackageCommand.cs:146:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PackNuGetPackageCommand.cs:86:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PackNuGetPackageCommand.cs:89:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushNuGetPackagesCommand.cs:36:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushNuGetPackagesCommand.cs:39:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushPackageCommand.cs:128:7 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushPackageCommand.cs:141:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushPackageCommand.cs:146:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/PushWorkspaceCommand.cs:121:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/PushWorkspaceCommand.cs:124:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushWorkspaceCommand.cs:68:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushWorkspaceCommand.cs:90:6 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/PushWorkspaceCommand.cs:95:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushWorkspaceCommand.cs:68:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushWorkspaceCommand.cs:90:6 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/PushWorkspaceCommand.cs:95:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/PushWorkspaceCommand.cs:98:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/ReferenceCommand.cs:67:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/ReferenceCommand.cs:70:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
