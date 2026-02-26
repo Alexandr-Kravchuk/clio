@@ -39,15 +39,15 @@ public class OpenInfrastructureCommand : Command<OpenInfrastructureOptions>{
 				Process.Start("xdg-open", infrsatructureCfgFilesFolder);
 			}
 			else {
-				Console.WriteLine($"Unsupported platform: {RuntimeInformation.OSDescription}");
+				ConsoleLogger.Instance.WriteLine($"Unsupported platform: {RuntimeInformation.OSDescription}");
 				return 1;
 			}
 
 			return 0;
 		}
 		catch (Exception e) {
-			Console.WriteLine($"Failed to open folder: {e.Message}");
-			Console.WriteLine($"Folder path: {infrsatructureCfgFilesFolder}");
+			ConsoleLogger.Instance.WriteLine($"Failed to open folder: {e.Message}");
+			ConsoleLogger.Instance.WriteLine($"Folder path: {infrsatructureCfgFilesFolder}");
 			return 1;
 		}
 	}

@@ -75,10 +75,10 @@
 				success = _applicationInstaller.Install(options.Name, _environmentSettings,
 					options.ReportPath, options.CheckCompilationErrors);
 				
-				Console.WriteLine(success ? "Done" : "Error");
+				ConsoleLogger.Instance.WriteLine(success ? "Done" : "Error");
 				return success ? 0 : 1;
 			} catch (Exception e) {
-				Console.WriteLine(e.StackTrace);
+				ConsoleLogger.Instance.WriteLine(e.StackTrace);
 				return 1;
 			}
 		}

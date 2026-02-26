@@ -407,3 +407,10 @@ Decision: Создан постоянный трекер warning из актуа
 Discovery: Для локального запуска на macOS IIS-зависимые тесты должны быть Windows-only (`Assert.Ignore`), а шаблонный тест `AddItem` должен формировать путь через `IFileSystem.Path`.
 Files: .codex/warnings/refactoring-tracker.md, .codex/warnings/clio-warnings-2026-02-26.csv, .codex/warnings/build-clio-2026-02-26.log, clio/Command/Command.cs, clio.tests/Command/OpenAppCommandTests.cs, clio.tests/Command/AddItemCommand.Tests.cs, clio.tests/Command/StartCommand.Tests.cs, clio.tests/Command/StopCommand.Tests.cs, .codex/workspace-diary.md
 Impact: Получена воспроизводимая точка продолжения рефакторинга (941 уникальный warning в трекере) и зеленый тестовый прогон для текущего цикла.
+
+## 2026-02-27 00:02 – Закрыты следующие 10 CLIO002
+Context: Пользователь запросил пройти следующие 10 замечаний из трекера.
+Decision: Выполнены безопасные замены `Console.WriteLine` на `ConsoleLogger.Instance.WriteLine` для 10 позиций CLIO002 в командах CreateTestProject/Install/OpenInfrastructure и InstallerHelper; статусы в трекере обновлены до `11/941`.
+Discovery: После этих правок проект продолжает собираться и полный тестовый прогон остается зеленым на текущей ветке.
+Files: .codex/warnings/refactoring-tracker.md, clio/Command/CreateTestProjectCommand.cs, clio/Command/InstallApplicationOptions.cs, clio/Command/InstallNugetPackageCommand.cs, clio/Command/InstallerHelper.cs, clio/Command/OpenInfrastructureCommand.cs, .codex/workspace-diary.md
+Impact: Ускорен low-risk этап очистки CLIO002 и сохранена детальная точка продолжения процесса в трекере.

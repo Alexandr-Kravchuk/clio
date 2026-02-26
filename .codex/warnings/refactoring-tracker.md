@@ -8,7 +8,7 @@ Total unique warning locations: 941
 Status legend: [ ] TODO, [~] IN_PROGRESS, [x] DONE
 
 ## Progress
-- Completed in branch: 1/941
+- Completed in branch: 11/941
 
 ## Completed
 - [x] CLIO002 | clio/Command/Command.cs:16 | Replace Console.WriteLine with ConsoleLogger
@@ -78,17 +78,17 @@ Status legend: [ ] TODO, [~] IN_PROGRESS, [x] DONE
 - [ ] CLIO001 | clio/Program.cs:765:35 | Type 'Clio.UserEnvironment.CreatioEnvironment' is registered in DI and should be resolved from the container instead of using 'new'
 - [ ] CLIO001 | clio/Program.cs:803:9 | Type 'Clio.EnvironmentSettings' is registered in DI and should be resolved from the container instead of using 'new'
 - [ ] CLIO001 | clio/Project/CreatioPkgProject.cs:66:11 | Type 'Clio.CreatioPkgProject' is registered in DI and should be resolved from the container instead of using 'new'
-- [ ] CLIO002 | clio/Command/CreateTestProjectCommand.cs:177:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/CreateTestProjectCommand.cs:181:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/CreateTestProjectCommand.cs:177:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/CreateTestProjectCommand.cs:181:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/DeployInfrastructureCommand.cs:342:37 | Use ConsoleLogger/ILogger instead of Console.Out
-- [ ] CLIO002 | clio/Command/InstallApplicationOptions.cs:78:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/InstallApplicationOptions.cs:81:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/InstallNugetPackageCommand.cs:64:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/InstallNugetPackageCommand.cs:67:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/InstallerHelper.cs:53:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:42:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:49:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
-- [ ] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:50:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/InstallApplicationOptions.cs:78:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/InstallApplicationOptions.cs:81:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/InstallNugetPackageCommand.cs:64:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/InstallNugetPackageCommand.cs:67:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/InstallerHelper.cs:53:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:42:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:49:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
+- [x] CLIO002 | clio/Command/OpenInfrastructureCommand.cs:50:4 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/PackNuGetPackageCommand.cs:86:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/PackNuGetPackageCommand.cs:89:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine
 - [ ] CLIO002 | clio/Command/PushNuGetPackagesCommand.cs:36:5 | Use ConsoleLogger/ILogger instead of Console.WriteLine

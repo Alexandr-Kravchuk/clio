@@ -61,10 +61,10 @@ namespace Clio.Command
 		public override int Execute(InstallNugetPkgOptions options) {
 			try {
 				_installNugetPackage.Install(ParseNugetPackageFullNames(options.Names), options.SourceUrl);
-				Console.WriteLine("Done");
+				ConsoleLogger.Instance.WriteLine("Done");
 				return 0;
 			} catch (Exception e) {
-				Console.WriteLine(e.Message);
+				ConsoleLogger.Instance.WriteLine(e.Message);
 				return 1;
 			}
 		}
