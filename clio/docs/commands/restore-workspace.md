@@ -172,6 +172,10 @@ Workspace configuration is stored in `.clio/workspaceSettings.json`. This file c
 - Which packages to include/exclude
 - Application version compatibility
 - Package filters and configurations
+- External packages that should not be downloaded during restore
+
+### External Packages
+Packages listed in the `ExternalPackages` setting are automatically excluded from the restore-workspace download. These packages are expected to exist locally in the `packages` folder (one level above the workspace root) and are maintained outside of the Creatio environment. See [External Packages](../Commands.md#external-packages) for full details.
 
 ## Aliases
 This command can also be invoked using these aliases:

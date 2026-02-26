@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -27,6 +28,7 @@ public class WorkspaceRestorer : IWorkspaceRestorer{
 	private readonly IPackageDownloader _packageDownloader;
 	private readonly IWorkspacePathBuilder _workspacePathBuilder;
 	private readonly IWorkspaceSolutionCreator _workspaceSolutionCreator;
+	private readonly IWorkspacePackageFilter _workspacePackageFilter;
 
 	#endregion
 
@@ -34,7 +36,8 @@ public class WorkspaceRestorer : IWorkspaceRestorer{
 
 	public WorkspaceRestorer(INuGetManager nugetManager, IWorkspacePathBuilder workspacePathBuilder,
 		IEnvironmentScriptCreator environmentScriptCreator, IWorkspaceSolutionCreator workspaceSolutionCreator,
-		IPackageDownloader packageDownloader, ICreatioSdk creatioSdk, IFileSystem fileSystem, ILogger logger, ITemplateProvider templateProvider) {
+		IPackageDownloader packageDownloader, ICreatioSdk creatioSdk, IFileSystem fileSystem, ILogger logger,
+		ITemplateProvider templateProvider, IWorkspacePackageFilter workspacePackageFilter) {
 		nugetManager.CheckArgumentNull(nameof(nugetManager));
 		workspacePathBuilder.CheckArgumentNull(nameof(workspacePathBuilder));
 		environmentScriptCreator.CheckArgumentNull(nameof(environmentScriptCreator));
@@ -50,6 +53,7 @@ public class WorkspaceRestorer : IWorkspaceRestorer{
 		_fileSystem = fileSystem;
 		_logger = logger;
 		_templateProvider = templateProvider;
+		_workspacePackageFilter = workspacePackageFilter;
 	}
 
 	#endregion
@@ -134,7 +138,13 @@ public class WorkspaceRestorer : IWorkspaceRestorer{
 	public void Restore(WorkspaceSettings workspaceSettings, EnvironmentSettings environmentSettings,
 		WorkspaceOptions restoreWorkspaceOptions) {
 		Version creatioSdkVersion = _creatioSdk.FindLatestSdkVersion(workspaceSettings.ApplicationVersion);
-		_packageDownloader.DownloadPackages(workspaceSettings.Packages, environmentSettings,
+		IEnumerable<string> packagesToDownload = _workspacePackageFilter
+			.FilterPackages(workspaceSettings.Packages, workspaceSettings);
+		IList<string> externalPackages = workspaceSettings.ExternalPackages;
+		if (externalPackages != null && externalPackages.Any()) {
+			packagesToDownload = packagesToDownload.Where(p => !externalPackages.Contains(p));
+		}
+		_packageDownloader.DownloadPackages(packagesToDownload, environmentSettings,
 			_workspacePathBuilder.PackagesFolderPath);
 		if (restoreWorkspaceOptions.IsNugetRestore == true) {
 			RestoreNugetCreatioSdk(creatioSdkVersion);

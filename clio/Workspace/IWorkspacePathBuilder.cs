@@ -30,6 +30,11 @@ namespace Clio.Workspaces
 		string LibFolderPath { get; }
 		string ConfigurationBinFolderPath { get; }
 
+		/// <summary>
+		/// Path to the external packages folder (sibling "packages" folder next to workspace root).
+		/// </summary>
+		string ExternalPackagesFolderPath { get; }
+
 		#endregion
 
 		#region Methods: Public

@@ -86,7 +86,7 @@ namespace Clio.Command
 				if (options.NeedUnlockPackage) {
 					var unlockPackageCommandOptions = new UnlockPackageOptions();
 					unlockPackageCommandOptions.CopyFromEnvironmentSettings(options);
-					unlockPackageCommandOptions.Name = string.Join(',', _workspace.WorkspaceSettings.Packages);
+					unlockPackageCommandOptions.Name = string.Join(',', _workspace.GetFilteredPackages());
 					Console.WriteLine("Unlock packages...");
 					CallbackInfo(options.CallbackProcess, "Unlock packages...");
 					_unlockPackageCommand.Execute(unlockPackageCommandOptions);

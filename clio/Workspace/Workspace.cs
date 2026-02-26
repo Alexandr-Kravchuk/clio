@@ -22,6 +22,7 @@ public class Workspace : IWorkspace{
 	private readonly IComposableApplicationManager _composableApplicationManager;
 
 	private readonly EnvironmentSettings _environmentSettings;
+	private readonly IExternalPackageDependencyResolver _externalPackageDependencyResolver;
 	private readonly IJsonConverter _jsonConverter;
 	private readonly IWorkspaceCreator _workspaceCreator;
 	private readonly IWorkspaceInstaller _workspaceInstaller;
@@ -41,7 +42,8 @@ public class Workspace : IWorkspace{
 		IWorkspaceCreator workspaceCreator, IWorkspaceRestorer workspaceRestorer,
 		IWorkspaceInstaller workspaceInstaller, IWorkspaceSolutionCreator workspaceSolutionCreator,
 		IJsonConverter jsonConverter, IComposableApplicationManager composableApplicationManager,
-		IWorkspacePackageFilter workspacePackageFilter, IFileSystem fileSystem, ILogger logger) {
+		IWorkspacePackageFilter workspacePackageFilter, IFileSystem fileSystem, ILogger logger,
+		IExternalPackageDependencyResolver externalPackageDependencyResolver) {
 		//environmentSettings.CheckArgumentNull(nameof(environmentSettings));
 		workspacePathBuilder.CheckArgumentNull(nameof(workspacePathBuilder));
 		workspaceCreator.CheckArgumentNull(nameof(workspaceCreator));
@@ -50,6 +52,7 @@ public class Workspace : IWorkspace{
 		workspaceSolutionCreator.CheckArgumentNull(nameof(workspaceSolutionCreator));
 		jsonConverter.CheckArgumentNull(nameof(jsonConverter));
 		workspacePackageFilter.CheckArgumentNull(nameof(workspacePackageFilter));
+		externalPackageDependencyResolver.CheckArgumentNull(nameof(externalPackageDependencyResolver));
 		_environmentSettings = environmentSettings;
 		_workspacePathBuilder = workspacePathBuilder;
 		_workspaceCreator = workspaceCreator;
@@ -59,6 +62,7 @@ public class Workspace : IWorkspace{
 		_jsonConverter = jsonConverter;
 		_composableApplicationManager = composableApplicationManager;
 		_workspacePackageFilter = workspacePackageFilter;
+		_externalPackageDependencyResolver = externalPackageDependencyResolver;
 		_fileSystem = fileSystem;
 		_logger = logger;
 		ResetLazyWorkspaceSettings();
@@ -153,7 +157,35 @@ public class Workspace : IWorkspace{
 	}
 
 	public IEnumerable<string> GetFilteredPackages() {
-		return _workspacePackageFilter.FilterPackages(WorkspaceSettings.Packages, WorkspaceSettings);
+		IEnumerable<string> filtered = _workspacePackageFilter.FilterPackages(WorkspaceSettings.Packages, WorkspaceSettings);
+		IList<string> externalPackages = WorkspaceSettings.ExternalPackages;
+		if (externalPackages != null && externalPackages.Any()) {
+			filtered = filtered.Where(p => !externalPackages.Contains(p));
+		}
+		return filtered;
+	}
+
+	/// <summary>
+	/// Returns the full list of packages for publish-app: workspace packages (filtered by IgnorePackages),
+	/// plus external packages and their resolved dependencies.
+	/// </summary>
+	public IEnumerable<string> GetPublishPackages() {
+		List<string> filtered = GetFilteredPackages().ToList();
+		List<string> externalPackages = WorkspaceSettings.ExternalPackages?.ToList() ?? new List<string>();
+		if (!externalPackages.Any()) {
+			return filtered;
+		}
+		string externalPackagesPath = _workspacePathBuilder.ExternalPackagesFolderPath;
+		IEnumerable<string> externalDeps = _externalPackageDependencyResolver.ResolveDependencies(
+			externalPackages,
+			WorkspaceSettings.IgnorePackages,
+			filtered,
+			externalPackagesPath);
+		return filtered
+			.Concat(externalPackages)
+			.Concat(externalDeps)
+			.Distinct()
+			.ToList();
 	}
 
 	public string GetWorkspaceApplicationCode() {
@@ -201,8 +233,9 @@ public class Workspace : IWorkspace{
 		
 		IEnumerable<string> includedPackages = _workspacePackageFilter.IncludedPackages(WorkspaceSettings.Packages, WorkspaceSettings);
 		IEnumerable<string> filteredPackages = _workspacePackageFilter.FilterPackages(includedPackages, WorkspaceSettings);
+		List<string> publishPackages = GetPublishPackages().ToList();
 		string resultPath
-			= _workspaceInstaller.PublishToFolder(filteredPackages, sanitizeFileName, destinationFolderPath, true);
+			= _workspaceInstaller.PublishToFolder(publishPackages, sanitizeFileName, destinationFolderPath, true);
 		string expectedPath = Path.GetFullPath(Path.Combine(destinationFolderPath, expectedFileName));
 
 		// Rename the file to match the expected name if necessary
@@ -239,8 +272,9 @@ public class Workspace : IWorkspace{
 
 		IEnumerable<string> includedPackages = _workspacePackageFilter.IncludedPackages(WorkspaceSettings.Packages, WorkspaceSettings);
 		IEnumerable<string> filteredPackages = _workspacePackageFilter.FilterPackages(includedPackages, WorkspaceSettings);
+		List<string> publishPackages = GetPublishPackages().ToList();
 		
-		return _workspaceInstaller.PublishToFolder(filteredPackages, sanitizeFileName, destinationFolderPath, false);
+		return _workspaceInstaller.PublishToFolder(publishPackages, sanitizeFileName, destinationFolderPath, false);
 	}
 
 	public void PublishZipToFolder(string zipFileName, string destionationFolderPath, bool overrideFile) {

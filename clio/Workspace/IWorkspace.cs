@@ -28,6 +28,11 @@ namespace Clio.Workspaces
 		string PublishToFile(string workspacePath, string filePath, string appVersion);
 		string GetWorkspaceApplicationCode();
 		IEnumerable<string> GetFilteredPackages();
+
+		/// <summary>
+		/// Returns workspace packages plus external packages and their dependencies for publishing.
+		/// </summary>
+		IEnumerable<string> GetPublishPackages();
 		#endregion
 
 	}

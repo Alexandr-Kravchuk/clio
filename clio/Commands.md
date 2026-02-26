@@ -956,7 +956,7 @@ clio install-application --id 12345 -e development
 
 **Aliases:** `publish-workspace`
 
-Publish workspace to a zip file for distribution or deployment.
+Publish workspace to a zip file for distribution or deployment. When `ExternalPackages` are configured in workspace settings, the publish output includes external packages and their resolved dependencies. See [External Packages](#external-packages) for details.
 
 ```bash
 clio publish-app -e <ENVIRONMENT_NAME>
@@ -2448,6 +2448,75 @@ When running `clio push-workspace -e production`, packages matching these patter
 - Package filtering uses optimized pattern matching with regex caching
 - Minimal performance impact on workspace operations
 - Filtering happens early in the pipeline to avoid unnecessary processing
+
+## External Packages
+
+External packages allow you to include third-party or shared packages in your workspace publish output without downloading them from the Creatio environment during `restore-workspace`. This is useful when your application depends on packages maintained by other teams or distributed separately.
+
+### Configuration
+
+Add the `ExternalPackages` property to `.clio/workspaceSettings.json`:
+
+```json
+{
+  "Packages": ["MyAppPackage", "MyAppCore"],
+  "ExternalPackages": ["SharedLibrary", "CommonUtils"],
+  "IgnorePackages": ["*Test*", "Demo*"]
+}
+```
+
+External packages must be placed in a `packages` folder located one level above the workspace root (sibling to the `.clio` folder):
+
+```
+project-root/
+├── packages/               ← External packages live here
+│   ├── SharedLibrary/
+│   │   └── descriptor.json
+│   └── CommonUtils/
+│       └── descriptor.json
+├── .clio/
+│   └── workspaceSettings.json
+├── MyAppPackage/
+└── MyAppCore/
+```
+
+### Dependency Resolution
+
+When publishing (`publish-app`), clio automatically resolves dependencies of external packages:
+
+1. Reads each external package's `descriptor.json` to find its `DependsOn` entries
+2. Checks if the dependency folder exists in the `packages` directory
+3. Excludes dependencies that match `IgnorePackages` patterns
+4. Excludes dependencies already listed in workspace `Packages`
+5. Recursively resolves transitive dependencies (deps of deps)
+
+The resolved dependencies are included in the publish output alongside the workspace packages and explicitly listed external packages.
+
+### Affected Operations
+
+| Operation | Behavior |
+|-----------|----------|
+| **publish-app** | Includes external packages + resolved dependencies in output |
+| **restore-workspace** | Excludes external packages from download (they already exist locally) |
+| **push-workspace** | Excludes external packages from unlock/push operations |
+| **download-configuration** | Uses filtered package list (excludes external packages) |
+
+### Example
+
+Given this configuration:
+```json
+{
+  "Packages": ["MyApp", "MyAppUI"],
+  "ExternalPackages": ["SharedAuth"],
+  "IgnorePackages": ["*Test*"]
+}
+```
+
+If `SharedAuth/descriptor.json` declares dependencies on `CryptoUtils` and `AuthTestHelper`:
+- `CryptoUtils` → included (exists in `packages/` folder, not ignored)
+- `AuthTestHelper` → excluded (matches `*Test*` ignore pattern)
+
+The publish output will contain: `MyApp`, `MyAppUI`, `SharedAuth`, `CryptoUtils`.
 
 ## Download configuration
 

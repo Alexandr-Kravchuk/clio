@@ -141,7 +141,7 @@ public class DownloadConfigurationCommand : Command<DownloadConfigurationCommand
 		if (Program.IsDebugMode) {
 			_logger.WriteDebug($"DownloadConfigurationCommand: Using {ConsoleLogger.WrapRed("default environment")} mode");
 		}
-		_applicationDownloader.Download(_workspace.WorkspaceSettings.Packages);
+		_applicationDownloader.Download(_workspace.GetFilteredPackages());
 		return 0;
 	}
 
