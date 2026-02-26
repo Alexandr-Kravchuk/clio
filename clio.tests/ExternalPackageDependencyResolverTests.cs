@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Clio.Common;
 using Clio.Package;
@@ -72,7 +73,7 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_NoDependencies_ReturnsEmpty() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
@@ -95,10 +96,10 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_WithExistingDeps_ReturnsThem() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/BaseDep").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/CoreDep").Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "BaseDep")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "CoreDep")).Returns(true);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
@@ -127,10 +128,10 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_MissingDeps_ExcludesMissing() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/ExistingDep").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/MissingDep").Returns(false);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "ExistingDep")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "MissingDep")).Returns(false);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
@@ -159,10 +160,10 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_IgnoredDeps_ExcludesIgnored() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/GoodDep").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/CrtCustomer360").Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "GoodDep")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "CrtCustomer360")).Returns(true);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
@@ -191,11 +192,11 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_WildcardIgnore_ExcludesMatching() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/ProductionLib").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/TestHelper").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/DemoData").Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "ProductionLib")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "TestHelper")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "DemoData")).Returns(true);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
@@ -224,10 +225,10 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_AlreadyIncluded_ExcludesDuplicates() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/NewDep").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/ExistingPkg").Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "NewDep")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "ExistingPkg")).Returns(true);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
@@ -256,7 +257,7 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_MissingDescriptor_ReturnsEmptyAndLogs() {
 		// Arrange
 		string extPath = "/ext/packages";
-		_mockFileSystem.ExistsFile("/ext/packages/CommonModule/descriptor.json").Returns(false);
+		_mockFileSystem.ExistsFile(Path.Combine(extPath, "CommonModule", "descriptor.json")).Returns(false);
 
 		// Act
 		List<string> result = _resolver.ResolveDependencies(
@@ -275,7 +276,7 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_MalformedDescriptor_ReturnsEmptyAndLogs() {
 		// Arrange
 		string extPath = "/ext/packages";
-		string descriptorPath = "/ext/packages/CommonModule/descriptor.json";
+		string descriptorPath = Path.Combine(extPath, "CommonModule", "descriptor.json");
 		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
 		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(_ => throw new System.Exception("JSON parse error"));
@@ -297,13 +298,15 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_OverlappingDeps_NoDuplicates() {
 		// Arrange
 		string extPath = "/ext/packages";
-		_mockFileSystem.ExistsFile("/ext/packages/PkgA/descriptor.json").Returns(true);
-		_mockFileSystem.ExistsFile("/ext/packages/PkgB/descriptor.json").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/SharedDep").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/DepA").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/DepB").Returns(true);
+		string pkgADescriptor = Path.Combine(extPath, "PkgA", "descriptor.json");
+		string pkgBDescriptor = Path.Combine(extPath, "PkgB", "descriptor.json");
+		_mockFileSystem.ExistsFile(pkgADescriptor).Returns(true);
+		_mockFileSystem.ExistsFile(pkgBDescriptor).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "SharedDep")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "DepA")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "DepB")).Returns(true);
 
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/PkgA/descriptor.json")
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(pkgADescriptor)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
 					DependsOn = new List<PackageDependency> {
@@ -312,7 +315,7 @@ public class ExternalPackageDependencyResolverTests
 					}
 				}
 			});
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/PkgB/descriptor.json")
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(pkgBDescriptor)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
 					DependsOn = new List<PackageDependency> {
@@ -341,12 +344,14 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_RecursiveDeps_ResolvesTransitively() {
 		// Arrange
 		string extPath = "/ext/packages";
-		_mockFileSystem.ExistsFile("/ext/packages/CommonModule/descriptor.json").Returns(true);
-		_mockFileSystem.ExistsFile("/ext/packages/Level1Dep/descriptor.json").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/Level1Dep").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/Level2Dep").Returns(true);
+		string commonDescriptor = Path.Combine(extPath, "CommonModule", "descriptor.json");
+		string level1Descriptor = Path.Combine(extPath, "Level1Dep", "descriptor.json");
+		_mockFileSystem.ExistsFile(commonDescriptor).Returns(true);
+		_mockFileSystem.ExistsFile(level1Descriptor).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "Level1Dep")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "Level2Dep")).Returns(true);
 
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/CommonModule/descriptor.json")
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(commonDescriptor)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
 					DependsOn = new List<PackageDependency> {
@@ -354,7 +359,7 @@ public class ExternalPackageDependencyResolverTests
 					}
 				}
 			});
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/Level1Dep/descriptor.json")
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(level1Descriptor)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
 					DependsOn = new List<PackageDependency> {
@@ -381,11 +386,12 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_DepIsExternalPackage_Skips() {
 		// Arrange
 		string extPath = "/ext/packages";
-		_mockFileSystem.ExistsFile("/ext/packages/PkgA/descriptor.json").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/PkgB").Returns(true);
-		_mockFileSystem.ExistsDirectory("/ext/packages/RegularDep").Returns(true);
+		string pkgADescriptor = Path.Combine(extPath, "PkgA", "descriptor.json");
+		_mockFileSystem.ExistsFile(pkgADescriptor).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "PkgB")).Returns(true);
+		_mockFileSystem.ExistsDirectory(Path.Combine(extPath, "RegularDep")).Returns(true);
 
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/PkgA/descriptor.json")
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(pkgADescriptor)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor {
 					DependsOn = new List<PackageDependency> {
@@ -413,8 +419,9 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_NullDescriptor_ReturnsEmpty() {
 		// Arrange
 		string extPath = "/ext/packages";
-		_mockFileSystem.ExistsFile("/ext/packages/Pkg/descriptor.json").Returns(true);
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/Pkg/descriptor.json")
+		string descriptorPath = Path.Combine(extPath, "Pkg", "descriptor.json");
+		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto { Descriptor = null });
 
 		// Act
@@ -433,8 +440,9 @@ public class ExternalPackageDependencyResolverTests
 	public void ResolveDependencies_NullDependsOn_ReturnsEmpty() {
 		// Arrange
 		string extPath = "/ext/packages";
-		_mockFileSystem.ExistsFile("/ext/packages/Pkg/descriptor.json").Returns(true);
-		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>("/ext/packages/Pkg/descriptor.json")
+		string descriptorPath = Path.Combine(extPath, "Pkg", "descriptor.json");
+		_mockFileSystem.ExistsFile(descriptorPath).Returns(true);
+		_mockJsonConverter.DeserializeObjectFromFile<PackageDescriptorDto>(descriptorPath)
 			.Returns(new PackageDescriptorDto {
 				Descriptor = new PackageDescriptor { DependsOn = null }
 			});

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using System.Reflection;
+using System.IO;
 using Clio.Command;
 using Clio.Common;
 using Clio.UserEnvironment;
@@ -311,9 +312,9 @@ public class DownloadConfigurationCommandTests : BaseCommandTests<DownloadConfig
 		DownloadConfigurationCommandOptions options = new() {
 			BuildZipPath = null
 		};
-		_workspaceMock.WorkspaceSettings.Returns(new WorkspaceSettings { Packages = new string[] { } });
+		_workspaceMock.GetFilteredPackages().Returns(new string[] { });
 		_applicationDownloaderMock
-			.When(x => x.Download(Arg.Any<string[]>()))
+			.When(x => x.Download(Arg.Any<IEnumerable<string>>()))
 			.Do(_ => throw new Exception("Test exception"));
 
 		DownloadConfigurationCommand command = Container.GetRequiredService<DownloadConfigurationCommand>();
@@ -333,7 +334,7 @@ public class DownloadConfigurationCommandTests : BaseCommandTests<DownloadConfig
 		DownloadConfigurationCommandOptions options = new() {
 			BuildZipPath = "   \t\n   "
 		};
-		_workspaceMock.WorkspaceSettings.Returns(new WorkspaceSettings { Packages = new string[] { } });
+		_workspaceMock.GetFilteredPackages().Returns(new string[] { });
 
 		DownloadConfigurationCommand command = Container.GetRequiredService<DownloadConfigurationCommand>();
 
@@ -342,7 +343,7 @@ public class DownloadConfigurationCommandTests : BaseCommandTests<DownloadConfig
 
 		// Assert
 		result.Should().Be(0, "Command should treat whitespace as empty and use environment mode");
-		_applicationDownloaderMock.Received(1).Download(Arg.Any<string[]>());
+		_applicationDownloaderMock.Received(1).Download(Arg.Any<IEnumerable<string>>());
 	}
 
 	[Test]
