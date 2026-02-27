@@ -296,6 +296,7 @@ internal class Program {
 					HostsOptions opts => Resolve<HostsCommand>(opts).Execute(opts),
 					LinkCoreSrcOptions opts => Resolve<LinkCoreSrcCommand>(opts).Execute(opts),
 					AssertOptions opts => Resolve<AssertCommand>(opts).Execute(opts),
+					LinkPackageStoreOptions opts => Resolve<LinkPackageStoreCommand>(opts).Execute(opts),
 					var _ => 1
 				};
 	};
