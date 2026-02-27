@@ -9,5 +9,5 @@
   "repository": "https://github.com/Advance-Technologies-Foundation/clio",
   "license": "MIT",
   "keywords": ["clio", "creatio", "bpm-online", "terrasoft", "low-code", "ci-cd"],
-  "skills": "../skills/"
+  "skills": ".github/skills/"
 }
