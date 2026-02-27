@@ -29,9 +29,6 @@ public class LinkCoreSrcOptions : EnvironmentNameOptions
 
 	[Option("mode", Required = false, Default = CreatioMode.NetCore, HelpText = "Creatio mode: NetCore (Terrasoft.WebHost) or NetFramework (Terrasoft.WebApp.Loader)")]
 	public CreatioMode Mode { get; set; }
-
-	[Option("silent", Required = false, Default = false, HelpText = "Skip user confirmation prompt")]
-	public bool Silent { get; set; }
 }
 
 public class LinkCoreSrcOptionsValidator : AbstractValidator<LinkCoreSrcOptions>
@@ -444,7 +441,7 @@ public class LinkCoreSrcCommand : Command<LinkCoreSrcOptions>
 		_logger.WriteLine("═════════════════════════════════════════════════════════════════════════════════════\n");
 
 		// If silent mode is enabled, skip confirmation prompt and proceed
-		if (options.Silent)
+		if (options.IsSilent)
 		{
 			_logger.WriteInfo("(Silent mode - proceeding without confirmation)");
 			return true;
