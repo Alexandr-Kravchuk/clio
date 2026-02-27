@@ -18,6 +18,8 @@ Clio is a command-line utility for integrating the Creatio platform with develop
 
 Verify installation:
 ```bash
+clio info
+# or
 clio ver
 ```
 
@@ -63,6 +65,7 @@ clio show-web-app-list --short
 
 # Ping to verify
 clio ping myenv
+# or: clio ping-app myenv
 
 # Health check
 clio healthcheck myenv
@@ -73,7 +76,7 @@ clio get-info -e myenv
 # Interactive environment manager (TUI)
 clio env-ui
 
-# Open in browser (Windows)
+# Open in browser
 clio open myenv
 
 # Remove environment
@@ -173,7 +176,7 @@ clio get-webservice-url -e myenv
 
 # Applications
 clio get-app-list -e myenv
-clio download-app MyApp -e myenv
+clio download-application MyApp -e myenv
 clio deploy-application MyApp -e source -d target
 clio install-application ./MyApp.gz -e myenv
 clio uninstall-app-remote MyApp -e myenv
@@ -206,7 +209,7 @@ clio build-workspace
 # Push to environment
 clio push-workspace -e myenv
 
-# Configure workspace packages
+# Configure workspace packages (canonical: cfg-worspace)
 clio cfgw --Packages Pkg1,Pkg2 -e myenv
 
 # Download configuration (libraries)
@@ -244,8 +247,14 @@ clio add-item model Contact -f Name,Email -n MyNameSpace -d . -e myenv
 # Generate all models
 clio add-item model -n MyCompany.Models -e myenv
 
+# Generate process model for ATF.Repository
+clio generate-process-model MyProcess -n MyNameSpace -e myenv
+
 # Add schema
 clio add-schema MySchema -t source-code -p MyPackage
+
+# Create test project
+clio new-test-project --package MyPackage
 
 # Execute SQL
 clio execute-sql-script "SELECT Id FROM SysSettings WHERE Code = 'CustomPackageId'" -e myenv
@@ -278,7 +287,7 @@ clio mock-data -m ./Models -d ./TestData -e myenv
 # Listen to logs
 clio listen --loglevel Debug -e myenv
 
-# Show package files
+# Show package files (canonical: show-package-file-content)
 clio show-files --package MyPackage -e myenv
 ```
 
@@ -315,7 +324,7 @@ clio show-diff --source production --target qa
 clio show-diff --source production --target qa --file diff.yaml
 
 # Run automation scenario
-clio run-scenario --file-name scenario.yaml
+clio run --file-name scenario.yaml
 
 # Clone environment
 clio clone-env --source Dev --target QA
@@ -362,6 +371,7 @@ clio update-cli
 
 ## Important Notes
 
+- Always verify command options with `clio <CMD> --help` — it is the authoritative source
 - Always use `-e <ENV>` to target a specific registered environment
 - For composable applications use `push-app` instead of `push-pkg`
 - cliogate package is required for many advanced features (workspace, get-info, etc.)
