@@ -33,14 +33,15 @@ clio help
 clio <COMMAND_NAME> --help
 ```
 
-### ver
-Display version info. **Aliases:** `info`, `get-version`, `i`
+### info
+Display version and system info. **Aliases:** `ver`, `get-version`, `i`
 ```bash
-clio ver           # All versions
-clio ver --clio    # clio version only
-clio ver --gate    # cliogate version only
-clio ver --runtime # .NET runtime only
-clio ver -s        # Settings file path
+clio info          # All versions
+clio info --all    # All known components
+clio info --clio   # clio version only
+clio info --gate   # cliogate version only
+clio info --runtime # .NET runtime only
+clio info -s       # Settings file path
 ```
 
 ---
@@ -62,9 +63,10 @@ Remove environment from settings.
 clio unreg-web-app <ENV>
 ```
 
-### ping
-Validate environment connectivity.
+### ping-app
+Validate environment connectivity. **Aliases:** `ping`
 ```bash
+clio ping-app <ENV>
 clio ping <ENV>
 ```
 
@@ -99,9 +101,10 @@ clio get-info -e <ENV>
 clio describe -e <ENV>
 ```
 
-### open
-Open environment in default browser (Windows only).
+### open-web-app
+Open environment in default browser (cross-platform). **Aliases:** `open`
 ```bash
+clio open-web-app <ENV>
 clio open <ENV>
 ```
 
@@ -124,8 +127,8 @@ clio clear-local-env
 clio clear-local-env --force
 ```
 
-### cdp (CustomizeDataProtection)
-Adjust CustomizeDataProtection in appsettings (for Net8 dev).
+### CustomizeDataProtection
+Adjust CustomizeDataProtection in appsettings (for Net8 dev). **Aliases:** `cdp`
 ```bash
 clio cdp true -e <ENV>
 clio cdp false -e <ENV>
@@ -238,6 +241,14 @@ clio pkg-hotfix <PACKAGE_NAME> true -e <ENV>
 clio pkg-hotfix <PACKAGE_NAME> false -e <ENV>
 ```
 
+### validation-pkg
+Validate package structure. **Aliases:** `validation`
+```bash
+clio validation-pkg <PACKAGE_NAME>
+clio validation-pkg <PACKAGE_NAME> -d ./results
+```
+Options: `-d, --DestinationResult` (destination path for validation results)
+
 ---
 
 ## Application Management
@@ -314,9 +325,10 @@ clio get-webservice-url -e <ENV>
 clio get-webservice-url <SERVICE_NAME> -e <ENV>
 ```
 
-### download-app
+### download-application
+Download application from environment. **Aliases:** `dapp`, `download-app`
 ```bash
-clio download-app <APP_NAME> -e <ENV>
+clio download-application <APP_NAME> -e <ENV>
 clio download-app <APP_NAME> -e <ENV> --FilePath output.zip
 ```
 
@@ -334,7 +346,7 @@ clio install-application --id 12345 -e <ENV>
 ```
 
 ### publish-app
-Publish workspace to zip. **Aliases:** `publish-workspace`, `publishw`, `ph`
+Publish workspace to zip or app hub. **Aliases:** `publishw`, `publish-hub`, `ph`, `publish-workspace`
 ```bash
 clio publish-app -e <ENV>
 clio publish-workspace --file ./out.zip --repo-path ./workspace
@@ -353,10 +365,15 @@ clio apps -e <ENV>
 ```
 
 ### upload-license
-Upload licenses. **Aliases:** `lic`
+Upload license file. **Aliases:** `license`, `loadlicense`, `load-license`
 ```bash
 clio upload-license license.lic -e <ENV>
-clio lic license.lic -e <ENV>
+```
+
+### upload-licenses
+Upload licenses (batch). **Aliases:** `lic`
+```bash
+clio upload-licenses license.lic -e <ENV>
 ```
 
 ### pkg-to-file-system / pkg-to-db
@@ -405,7 +422,7 @@ clio push-workspace -e <ENV> --unlock
 clio build-workspace
 ```
 
-### configure-workspace
+### cfg-worspace
 Configure workspace packages. **Aliases:** `cfgw`
 ```bash
 clio cfgw --Packages Pkg1,Pkg2 -e <ENV>
@@ -418,11 +435,11 @@ clio merge-workspaces --workspaces path1,path2 -e <ENV>
 clio merge-workspaces --workspaces path1,path2 --output ./out --name MergedPkgs
 ```
 
-### publish-workspace
-Publish workspace to file or app hub. **Aliases:** `publishw`, `publish-hub`, `ph`
+### publish-app (workspace)
+Publish workspace to file or app hub. **Aliases:** `publishw`, `publish-hub`, `ph`, `publish-workspace`
 ```bash
 clio publish-workspace --file ./output.zip --repo-path ./workspace
-clio publish-workspace --app-name MyApp --app-hub /hub/path --repo-path ./workspace -e <ENV>
+clio publish-app --app-name MyApp --app-hub /hub/path --repo-path ./workspace -e <ENV>
 ```
 
 ### download-configuration
@@ -520,8 +537,8 @@ clio call-service --service-path ServiceModel/UserService.svc/Get \
 ```
 Options: `--service-path`, `--method` (GET|POST|DELETE), `--input` / `--body`, `--destination`, `--variables`
 
-### ds (DataService)
-Execute DataService requests.
+### dataservice
+Execute DataService requests. **Aliases:** `ds`
 ```bash
 # SELECT
 clio ds -t select --body '{"rootSchemaName":"Contact","operationType":0}' -e <ENV>
@@ -555,6 +572,20 @@ Add cs schema to project.
 clio add-schema <SCHEMA_NAME> -t source-code -p <PACKAGE_NAME>
 ```
 
+### generate-process-model
+Generate process model for ATF.Repository. **Aliases:** `gpm`
+Requires cliogate.
+```bash
+clio generate-process-model <PROCESS_CODE> -n MyNameSpace -d . -e <ENV>
+```
+Options: `-d` (destination, default: `.`), `-n` (namespace, default: `AtfTIDE.ProcessModels`), `-x` (culture, default: `en-US`)
+
+### new-test-project
+Create a unit test project for a package. **Aliases:** `unit-test`, `create-test-project`
+```bash
+clio new-test-project --package MyPackage
+```
+
 ### nuget2dll (switch-nuget-to-dll-reference)
 Convert NuGet references to DLL references.
 ```bash
@@ -567,6 +598,13 @@ Link workspace packages to file design mode. **Aliases:** `l4r`
 clio l4r -e <ENV> -p * -r ./packages
 clio l4r --envPkgPath /path/to/Pkg --repoPath ./packages --packages "*"
 ```
+
+### link-to-repository
+Link environment packages to repository (Windows only). **Aliases:** `l2r`, `link2repo`
+```bash
+clio link-to-repository -r ./packages -e /path/to/Pkg
+```
+Options: `-r, --repoPath` (required), `-e, --envPkgPath` (required)
 
 ### link-core-src
 Link Creatio core source code. **Aliases:** `lcs`
@@ -608,9 +646,10 @@ clio listen --loglevel Debug --logPattern ExceptNoisyLoggers -e <ENV>
 clio listen --FileName logs.txt --Silent true -e <ENV>
 ```
 
-### show-files
-Show package file content. **Aliases:** `files`
+### show-package-file-content
+Show package file content. **Aliases:** `show-files`, `files`
 ```bash
+clio show-package-file-content --package <PACKAGE_NAME> -e <ENV>
 clio show-files --package <PACKAGE_NAME> -e <ENV>
 clio show-files --package <PACKAGE_NAME> --file <FILE_PATH> -e <ENV>
 ```
@@ -702,10 +741,10 @@ clio show-diff --source production --target qa
 clio show-diff --source production --target qa --file diff.yaml
 ```
 
-### run-scenario
-Execute automation scenario.
+### run
+Execute automation scenario. **Aliases:** `scenario`, `run-scenario`
 ```bash
-clio run-scenario --file-name scenario.yaml
+clio run --file-name scenario.yaml
 ```
 
 Scenario example:
@@ -750,6 +789,12 @@ clio create-k8-files --pg-limit-memory 8Gi --pg-limit-cpu 4
 clio create-k8-files --mssql-limit-memory 4Gi --mssql-limit-cpu 2
 ```
 
+### open-k8-files
+Open K8s deployment files folder. **Aliases:** `cfg-k8f`, `cfg-k8s`, `cfg-k8`
+```bash
+clio open-k8-files
+```
+
 ### deploy-creatio
 Deploy Creatio from ZIP.
 ```bash
@@ -792,10 +837,10 @@ clio assert fs --path /path/to/app --user "BUILTIN\IIS_IUSRS" --perm full-contro
 
 ## Web Farm
 
-### check-web-farm-node
-Verify web farm node consistency.
+### compare-web-farm-node
+Verify web farm node consistency. **Aliases:** `check-web-farm-node`, `check-farm`, `farm-check`, `cwf`
 ```bash
-clio check-web-farm-node "\\Node1\Creatio,\\Node2\Creatio" -d
+clio compare-web-farm-node "\\Node1\Creatio,\\Node2\Creatio" -d
 ```
 
 ### turn-farm-mode
@@ -845,3 +890,17 @@ Deploy via ALM workflow. **Aliases:** `deploy`
 ```bash
 clio alm-deploy <PACKAGE_NAME> -e <ENV>
 ```
+
+### check-windows-features
+Check required Windows components (IIS, .NET Framework, etc.). **Aliases:** `checkw`, `cf`
+Windows only.
+```bash
+clio check-windows-features
+```
+
+### compressApp
+Compress application packages into zip file. **Aliases:** `comp-app`
+```bash
+clio compressApp -s /path/to/packages -p Pkg1,Pkg2 -d /path/to/output
+```
+Options: `-s, --SourcePath` (required), `-p, --Packages` (required), `-d, --DestinationPath` (required), `--SkipPdb` (default: true)
