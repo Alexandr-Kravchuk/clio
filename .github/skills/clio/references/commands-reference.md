@@ -81,9 +81,10 @@ clio envs --format raw           # Plain text
 ```
 
 ### env-ui
-Interactive console UI for environment management. **Aliases:** `ui`
+Interactive console UI for environment management. **Aliases:** `gui`, `far`
 ```bash
 clio env-ui
+clio gui
 ```
 
 ### healthcheck
@@ -348,8 +349,8 @@ clio install-application --id 12345 -e <ENV>
 ### publish-app
 Publish workspace to zip or app hub. **Aliases:** `publishw`, `publish-hub`, `ph`, `publish-workspace`
 ```bash
-clio publish-app -e <ENV>
-clio publish-workspace --file ./out.zip --repo-path ./workspace
+clio publish-app --file ./out.zip --repo-path ./workspace
+clio publish-app --repo-path ./workspace --app-hub /hub/path --app-name MyApp -e <ENV>
 ```
 
 ### uninstall-app-remote
@@ -706,8 +707,8 @@ clio update -y         # Auto-confirm
 ```yaml
 environment:
   url: https://production.creatio.com
-  username: admin
-  password: password
+  username: <CREATIO_LOGIN>
+  password: <CREATIO_PASSWORD>
 apps:
   - name: CrtCustomer360
     version: "1.0.1"
@@ -722,6 +723,7 @@ webservices:
   - name: Service1
     url: "https://api.example.com"
 ```
+Security note: never commit real credentials to Git. Use placeholders and inject secrets from a secure store (CI variables, vault, or local secret manager).
 
 ### apply-manifest
 ```bash
@@ -750,8 +752,8 @@ clio run --file-name scenario.yaml
 Scenario example:
 ```yaml
 secrets:
-  Login: real-login
-  Password: real-password
+  Login: <LOGIN_FROM_SECRET_STORE>
+  Password: <PASSWORD_FROM_SECRET_STORE>
 settings:
   uri: http://localhost:80
 steps:
@@ -875,7 +877,7 @@ clio open-settings
 ### new-ui-project
 Create Freedom UI project.
 ```bash
-clio new-ui-project <PROJECT_NAME>
+clio new-ui-project <PROJECT_NAME> --package <PACKAGE_NAME> --vendor-prefix <vendorprefix>
 ```
 
 ### register / unregister
